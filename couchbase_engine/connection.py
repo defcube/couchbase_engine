@@ -26,10 +26,10 @@ class _LazyBucket(LazyObject):
 
     def getobj(self, key):
         from document import bucket_documentclass_index
-        b = self._get_wrapped().get(key)[2]
-        b = json.loads(b)
-        obj = bucket_documentclass_index[self._key][b['_type']](key)
-        obj.load_json(b)
+        res = self._get_wrapped().get(key)
+        jsn = json.loads(res[2])
+        obj = bucket_documentclass_index[self._key][jsn['_type']](key)
+        obj.load_json(jsn, res[1])
         return obj
 
 

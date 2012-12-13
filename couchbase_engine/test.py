@@ -23,12 +23,13 @@ class FooDoc(Document):
         'bucket': 'test',
     }
 
-d = TestDoc('foobar', field1='sourD').save()
+
+d = TestDoc('foobar', field1='sourD').save(prevent_overwrite=False)
 d.speak()
 
 d = FooDoc('laika')
 d.name = 'Laika'
-d.save()
+d.save(prevent_overwrite=False)
 
 get_bucket().getobj('foobar').speak()
 get_bucket('test').getobj('laika').speak()

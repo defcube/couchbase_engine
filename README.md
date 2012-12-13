@@ -11,6 +11,7 @@ Supported Features
 * Full Inheritance Support
 * Multiple connections
 * Default value for fields
+* Support for simple arrays
 
 
 Basic Usage
@@ -65,7 +66,7 @@ Future Wishlist
 ---------------
 
 * Load from views
-* Support for array fields (containing another type of field)
+* Support for complex arrays containing sub-arrays and dicts
 * Validation
 * Support for design document creation. All migrations will be done by hand, but loading a missing design document should be automatic.
 * clean() and clean_FIELDNAME() validation

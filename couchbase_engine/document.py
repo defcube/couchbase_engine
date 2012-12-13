@@ -1,5 +1,7 @@
 from collections import defaultdict
+import copy
 import connection
+from couchbase.exception import MemcachedError
 from fields import BaseField
 import json
 
@@ -34,17 +36,42 @@ class Document(object):
     def __init__(self, id, **kwargs):
         super(Document, self).__init__()
         self._id = id
+        self._cas_value = None
         for k, field in self._meta['_fields'].iteritems():
             try:
-                setattr(self, k, field.default)
+                d = field.default
             except AttributeError:
-                pass
+                continue
+            if callable(d):
+                d = d()
+            else:
+                d = copy.deepcopy(d)
+            setattr(self, k, d)
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
     @property
     def _bucket(self):
         return connection.buckets[self._meta['bucket']]
+
+    def load_from_couch(self, required=True):
+        try:
+            res = self._bucket.get(self._id)
+        except MemcachedError, e:
+            if e.status == 1 and not required:
+                pass
+            else:
+                raise AssertionError("Key {0} missing from couchbase.".format(
+                    self._id))
+        else:
+            self.load_json(json.loads(res[2]), res[1])
+        return self
+
+    def load_and_save(self, required=True, **kwargs):
+        self.load_from_couch(required=required)
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
+        self.save()
 
     def to_json(self):
         m = {'_type': self._meta['_type']}
@@ -53,15 +80,33 @@ class Document(object):
                 val = getattr(self, key)
             except AttributeError:
                 continue
-            m[key] = val
+            val = field.to_json(val)
+            if field.should_write_value(val):
+                m[key] = val
         return json.dumps(m)
 
-    def load_json(self, json):
+    def load_json(self, json, cas_value=None):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
                 setattr(self, key, self._meta['_fields'][key].from_json(val))
+        self._cas_value = cas_value
         return self
 
-    def save(self):
-        self._bucket.set(self._id, 0, 0, self.to_json())
+    def save(self, prevent_overwrite=True, expiration=0):
+        if not prevent_overwrite:
+            trash, self._cas_value, trash2 = self._bucket.set(
+                self._id, expiration, 0, self.to_json())
+        else:
+            if self._cas_value:
+                self._bucket.cas(
+                    self._id, expiration, 0, self._cas_value, self.to_json())
+            else:
+                trash, self._cas_value, trash2 = self._bucket.add(
+                    self._id, expiration, 0, self.to_json())
         return self
+
+    def __setattr__(self, key, value):
+        if not key.startswith('_') and not key in self._meta['_fields']:
+            raise KeyError("Invalid attribute for model: {0}".format(key))
+        return super(Document, self).__setattr__(key, value)
+
