@@ -3,10 +3,15 @@ couchbase_engine
 
 Python Couchbase ORM, modeled after Django and MongoEngine.
 
+Development state: alpha-expiremental. A minimal set of features are being created to facilitate some of my projects. Once I run this on a live site with some traffic, I'll change development state to stable.
+
+
 Supported Features
 ------------------
 * Full Inheritance Support
 * Multiple connections
+* Default value for fields
+
 
 Basic Usage
 -----------
@@ -59,7 +64,6 @@ This generates the following output:
 Future Wishlist
 ---------------
 
-* Default value for fields
 * Load from views
 * Support for array fields (containing another type of field)
 * Validation

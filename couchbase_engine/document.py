@@ -34,6 +34,11 @@ class Document(object):
     def __init__(self, id, **kwargs):
         super(Document, self).__init__()
         self._id = id
+        for k, field in self._meta['_fields'].iteritems():
+            try:
+                setattr(self, k, field.default)
+            except AttributeError:
+                pass
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
@@ -52,12 +57,11 @@ class Document(object):
         return json.dumps(m)
 
     def load_json(self, json):
-        for key, field in self._meta['_fields'].iteritems():
-            setattr(self, key, json[key])
+        for key, val in json.iteritems():
+            if key in self._meta['_fields']:
+                setattr(self, key, self._meta['_fields'][key].from_json(val))
         return self
 
     def save(self):
         self._bucket.set(self._id, 0, 0, self.to_json())
         return self
-
-

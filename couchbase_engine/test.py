@@ -23,7 +23,6 @@ class FooDoc(Document):
         'bucket': 'test',
     }
 
-
 d = TestDoc('foobar', field1='sourD').save()
 d.speak()
 
@@ -33,5 +32,3 @@ d.save()
 
 get_bucket().getobj('foobar').speak()
 get_bucket('test').getobj('laika').speak()
-
-

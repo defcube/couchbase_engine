@@ -1,4 +1,4 @@
-from utils.functional import LazyObject
+from utils.functional import LazyObject, empty
 import couchbase
 import json
 
@@ -16,13 +16,13 @@ class _LazyBucket(LazyObject):
         super(_LazyBucket, self).__init__()
 
     def _setup(self):
-        self._wrapped = couchbase.Couchbase(
+        self.__dict__['_wrapped'] = couchbase.Couchbase(
             self._host, self._username, self._password).bucket(self._bucket)
 
     def _get_wrapped(self):
-        if not self._wrapped:
+        if self._wrapped == empty:
             self._setup()
-        return self._wrapped
+        return self.__dict__['_wrapped']
 
     def getobj(self, key):
         from document import bucket_documentclass_index
@@ -33,15 +33,10 @@ class _LazyBucket(LazyObject):
         return obj
 
 
-
-
-
 def register_bucket(host='localhost', username='Administrator', password='',
                     bucket='default', key='_default_'):
     global buckets
     buckets[key] = _LazyBucket(key, host, username, password, bucket)
-#    buckets[key] = SimpleLazyObject(
-#        lambda: couchbase.Couchbase(host, username, password).bucket(bucket))
 
 
 def get_bucket(key='_default_'):
