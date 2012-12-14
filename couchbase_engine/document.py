@@ -63,6 +63,8 @@ class _DocumentMetaclass(type):
         return res
 
 
+_empty = object()
+
 class Document(object):
     __metaclass__ = _DocumentMetaclass
 
@@ -73,16 +75,9 @@ class Document(object):
         super(Document, self).__init__()
         self._id = id
         self._cas_value = None
-        for k, field in self._meta['_fields'].iteritems():
-            try:
-                d = field.default
-            except AttributeError:
-                continue
-            if callable(d):
-                d = d()
-            else:
-                d = copy.deepcopy(d)
-            setattr(self, k, d)
+        for k in self._meta['_fields'].iterkeys():
+            setattr(self, k, _empty)
+        self._anything_set = False  # order here is VERY important
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
@@ -152,7 +147,27 @@ class Document(object):
         self._bucket.delete(self._id)
 
     def __setattr__(self, key, value):
+        if key != '_anything_set' and \
+                not getattr(self, '_anything_set', False):
+            self.__dict__['_anything_set'] = True
         if not key.startswith('_') and not key in self._meta['_fields']:
             raise KeyError("Invalid attribute for model: {0}".format(key))
         return super(Document, self).__setattr__(key, value)
+
+    def __getattribute__(self, name):
+        val = super(Document, self).__getattribute__(name)
+        if val == _empty and name in self._meta['_fields']:
+            if not self._cas_value and not self._anything_set:
+                self.load()
+                return getattr(self, name)
+            else:
+                d = self._meta['_fields'][name].default
+                if callable(d):
+                    d = d()
+                else:
+                    d = copy.deepcopy(d)
+                setattr(self, name, d)
+                return d
+        return val
+
 
