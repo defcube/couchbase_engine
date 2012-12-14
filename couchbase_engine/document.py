@@ -75,6 +75,7 @@ class Document(object):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
         self.save()
+        return self
 
     def to_json(self):
         m = {'_type': self._meta['_type']}
