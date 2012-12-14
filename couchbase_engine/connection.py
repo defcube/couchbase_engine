@@ -37,6 +37,7 @@ def register_bucket(host='localhost', username='Administrator', password='',
                     bucket='default', key='_default_'):
     global buckets
     buckets[key] = _LazyBucket(key, host, username, password, bucket)
+    return buckets[key]
 
 
 def get_bucket(key='_default_'):

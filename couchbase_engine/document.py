@@ -33,6 +33,9 @@ class _DocumentMetaclass(type):
 class Document(object):
     __metaclass__ = _DocumentMetaclass
 
+    class DoesNotExist(Exception):
+        pass
+
     def __init__(self, id, **kwargs):
         super(Document, self).__init__()
         self._id = id
@@ -54,21 +57,21 @@ class Document(object):
     def _bucket(self):
         return connection.buckets[self._meta['bucket']]
 
-    def load_from_couch(self, required=True):
+    def load(self, required=True):
         try:
             res = self._bucket.get(self._id)
         except MemcachedError, e:
             if e.status == 1 and not required:
                 pass
             else:
-                raise AssertionError("Key {0} missing from couchbase.".format(
-                    self._id))
+                raise self.DoesNotExist(
+                    "Key {0} missing from couchbase.".format(self._id))
         else:
             self.load_json(json.loads(res[2]), res[1])
         return self
 
     def load_and_save(self, required=True, **kwargs):
-        self.load_from_couch(required=required)
+        self.load(required=required)
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
         self.save()
