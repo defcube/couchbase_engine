@@ -3,6 +3,7 @@ import dateutil
 
 _empty = object()
 
+
 class BaseField(object):
     cast_to_type = None
 
@@ -61,6 +62,7 @@ class DateTimeField(BaseField):
 
 class SetField(BaseField):
     def __init__(self, contains, **kwargs):
+        kwargs.setdefault('default', lambda: set())
         super(SetField, self).__init__(**kwargs)
         self._contains = contains
 
