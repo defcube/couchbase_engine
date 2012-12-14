@@ -2,10 +2,43 @@ from collections import defaultdict
 import copy
 import connection
 from couchbase.exception import MemcachedError
+from couchbase.rest_client import DesignDocNotFoundError
 from fields import BaseField
 import json
+import logging
 
+logger = logging.getLogger('couchbase_engine')
 bucket_documentclass_index = defaultdict(lambda: {})
+all_design_documents = defaultdict(lambda: {})
+
+
+def register_design_document(name, value, bucket='_default_'):
+    all_design_documents[bucket][name] = json.dumps(value)
+
+
+def create_design_documents(overwrite=False):
+    global all_design_documents
+    from connection import get_bucket
+    for bucketkey, ddocs in all_design_documents.iteritems():
+        bucket = get_bucket(bucketkey)
+        rest = bucket.server._rest()
+        for ddoc_name, value in ddocs.iteritems():
+            try:
+                rest.get_design_doc(bucket.name, ddoc_name)
+            except DesignDocNotFoundError:
+                pass
+            else:
+                if not overwrite:
+                    logger.debug("{0}: {1} exists already. "
+                                 "Not overwriting.".format(bucketkey,
+                                                           ddoc_name))
+                    continue
+                logger.warn("{0}: {1} exists already. "
+                            "OVERWRITING!".format(bucketkey, ddoc_name))
+            logger.info("{0}: {1} is being created. ".format(
+                bucketkey, ddoc_name))
+            rest.create_design_doc(bucket.name, ddoc_name, value)
+
 
 class _DocumentMetaclass(type):
     ALLOWED_META_KEYS = ('bucket',)
@@ -52,6 +85,10 @@ class Document(object):
             setattr(self, k, d)
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
+
+    @classmethod
+    def get_bucket(cls):
+        return connection.buckets[cls._meta['bucket']]
 
     @property
     def _bucket(self):
@@ -108,6 +145,11 @@ class Document(object):
                 trash, self._cas_value, trash2 = self._bucket.add(
                     self._id, expiration, 0, self.to_json())
         return self
+
+    def delete(self):
+        if not self._id:
+            raise ValueError("Cannot delete if no ID")
+        self._bucket.delete(self._id)
 
     def __setattr__(self, key, value):
         if not key.startswith('_') and not key in self._meta['_fields']:

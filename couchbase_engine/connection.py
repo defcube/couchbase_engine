@@ -1,3 +1,4 @@
+from couchbase_engine.utils.functional import SimpleLazyObject
 from utils.functional import LazyObject, empty
 import couchbase
 import json
@@ -29,8 +30,24 @@ class _LazyBucket(LazyObject):
         res = self._get_wrapped().get(key)
         jsn = json.loads(res[2])
         obj = bucket_documentclass_index[self._key][jsn['_type']](key)
+        obj._id = key
         obj.load_json(jsn, res[1])
         return obj
+
+    def view_result_objects(self, design_doc, view, params={}, limit=100):
+        rest = self.server._rest()
+        res = rest.view_results(self.name, design_doc, view, params, limit)
+
+        def lazyload(x):
+            return SimpleLazyObject(lambda: self.getobj(x['id']))
+
+        return [lazyload(x) for x in res['rows']]
+
+    def __setitem__(self, key, value):
+        self._get_wrapped()[key] = value
+
+    def __getitem__(self, item):
+        return self._get_wrapped()[item]
 
 
 def register_bucket(host='localhost', username='Administrator', password='',

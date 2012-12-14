@@ -51,6 +51,8 @@ class FloatField(BaseField):
 
 class DateTimeField(BaseField):
     def to_json(self, val):
+        if val is None:
+            return val
         return str(val)
 
     def from_json(self, jsn):
