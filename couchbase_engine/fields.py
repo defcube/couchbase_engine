@@ -5,12 +5,26 @@ _empty = object()
 
 
 class BaseField(object):
+
+    class NoDefaultError(Exception):
+        pass
+
     cast_to_type = None
 
     def __init__(self, label=None, default=_empty):
         if default != _empty:
             self.default = default
         self.label = label
+
+    def get_default(self):
+        try:
+            d = self.default
+        except AttributeError:
+            raise self.NoDefaultError()
+        if callable(d):
+            return d()
+        else:
+            return d
 
     def from_json(self, jsn):
         if jsn is None:
@@ -26,12 +40,14 @@ class BaseField(object):
             val = self.cast_to_type(val)
         return val
 
-    def should_write_value(self, value):
-        if not hasattr(self, 'default'):
+    def should_write_value(self, value, value_sanitizer=lambda x: x):
+        try:
+            default = self.get_default()
+        except self.NoDefaultError:
             if value:
                 return True
         else:
-            return value != self.default
+            return value_sanitizer(value) != value_sanitizer(default)
 
 
 class StringField(BaseField):
@@ -73,8 +89,5 @@ class SetField(BaseField):
         return set([self._contains.from_json(x) for x in jsn])
 
     def should_write_value(self, value):
-        if not hasattr(self, 'default'):
-            if value:
-                return True
-        else:
-            return set(value) != set(self.default)
+        return super(SetField, self).should_write_value(value,
+                                                        value_sanitizer=set)
