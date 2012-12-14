@@ -8,10 +8,13 @@ Development state: alpha-expiremental. A minimal set of features are being creat
 
 Supported Features
 ------------------
-* Full Inheritance Support
+* Full inheritance support
 * Multiple connections
 * Default value for fields
 * Support for simple arrays
+* Load objects from views
+* Support for design document creation.
+* Integrates with django (optional)
 
 
 Basic Usage
@@ -65,8 +68,7 @@ This generates the following output:
 Future Wishlist
 ---------------
 
-* Load from views
 * Support for complex arrays containing sub-arrays and dicts
 * Validation
-* Support for design document creation. All migrations will be done by hand, but loading a missing design document should be automatic.
 * clean() and clean_FIELDNAME() validation
+* pagination support in views
