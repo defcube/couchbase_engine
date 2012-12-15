@@ -19,6 +19,8 @@ def register_design_document(name, value, bucket='_default_'):
 def create_design_documents(overwrite=False):
     global all_design_documents
     from connection import get_bucket
+    logger.debug(
+        "Loading these design documents: {0}".format(all_design_documents))
     for bucketkey, ddocs in all_design_documents.iteritems():
         bucket = get_bucket(bucketkey)
         rest = bucket.server._rest()
@@ -173,6 +175,9 @@ class Document(object):
         val = super(Document, self).__getattribute__(name)
         if val == _empty and name in self._meta['_fields']:
             if not self._cas_value and not self._anything_set:
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("Lazy loading {0} for field {1}".format(
+                        self._id, name))
                 self.load()
                 return getattr(self, name)
             else:
