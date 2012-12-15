@@ -85,6 +85,21 @@ class Document(object):
     def get_bucket(cls):
         return connection.buckets[cls._meta['bucket']]
 
+    @classmethod
+    def get_objects(cls, ddoc_name, view_name, args=None, limit=100):
+        """Loads objects from a view.
+
+        Objects are lazy-loaded.
+
+        Note: There is no checking to confirm the object is actually of the
+        class that requested this. Any registered object that is found will be
+        loaded.
+        """
+        if args is None:
+            args = {}
+        return cls.get_bucket().view_result_objects(ddoc_name, view_name,
+                                                    args, limit)
+
     @property
     def _bucket(self):
         return connection.buckets[self._meta['bucket']]
@@ -169,5 +184,3 @@ class Document(object):
                 setattr(self, name, d)
                 return d
         return val
-
-

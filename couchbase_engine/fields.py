@@ -5,6 +5,7 @@ _empty = object()
 
 
 class BaseField(object):
+    default = None
 
     class NoDefaultError(Exception):
         pass
@@ -52,6 +53,7 @@ class BaseField(object):
 
 class StringField(BaseField):
     cast_to_type = str
+    default = ""
 
 
 class BooleanField(BaseField):
@@ -77,8 +79,9 @@ class DateTimeField(BaseField):
 
 
 class SetField(BaseField):
+    default = lambda x: set()
+
     def __init__(self, contains, **kwargs):
-        kwargs.setdefault('default', lambda: set())
         super(SetField, self).__init__(**kwargs)
         self._contains = contains
 
