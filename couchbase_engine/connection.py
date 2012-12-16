@@ -30,8 +30,8 @@ class _LazyBucket(LazyObject):
         from document import bucket_documentclass_index
         res = self._get_wrapped().get(key)
         jsn = json.loads(res[2])
-        obj = bucket_documentclass_index[self._key][jsn['_type']](key)
-        obj._id = key
+        obj = bucket_documentclass_index[self._key][jsn['_type']](
+            key, _i_mean_it=True)
         obj.load_json(jsn, res[1])
         return obj
 

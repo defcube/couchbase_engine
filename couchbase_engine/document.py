@@ -58,6 +58,7 @@ class _DocumentMetaclass(type):
             if attr.startswith('_'):
                 continue
             if isinstance(val, BaseField):
+                val.register_meta(meta)
                 meta['_fields'][attr] = val
                 dct[attr] = None
         res = super(_DocumentMetaclass, mcs).__new__(mcs, name, bases, dct)
@@ -73,15 +74,15 @@ class Document(object):
     class DoesNotExist(Exception):
         pass
 
-    def __init__(self, id, **kwargs):
+    def __init__(self, key, _i_mean_it=False):
+        if not _i_mean_it:
+            raise RuntimeError("You probably want to call Document.load() or "
+                               "Document.create()")
         super(Document, self).__init__()
-        self._id = id
+        self._key = key
         self._cas_value = None
-        for k in self._meta['_fields'].iterkeys():
-            setattr(self, k, _empty)
-        self._anything_set = False  # order here is VERY important
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
+        for k, field in self._meta['_fields'].iteritems():
+            field.add_to_object(k, self)
 
     @classmethod
     def get_bucket(cls):
@@ -106,24 +107,46 @@ class Document(object):
     def _bucket(self):
         return connection.buckets[self._meta['bucket']]
 
-    def load(self, required=True):
+    @classmethod
+    def load(cls, key):
+        return cls(key, _i_mean_it=True).reload()
+
+    @classmethod
+    def load_or_create(cls, key, commit=True, defaults=_empty):
         try:
-            res = self._bucket.get(self._id)
+            return cls.load(key)
+        except Document.DoesNotExist:
+            if defaults == _empty:
+                kwargs = {}
+            else:
+                kwargs = defaults
+            return cls.create(key, commit, **kwargs)
+
+    @classmethod
+    def create(cls, key, commit=True, **kwargs):
+        obj = cls(key, _i_mean_it=True)
+        for k, v in kwargs.iteritems():
+            setattr(obj, k, v)
+        if commit:
+            obj.save()
+        return obj
+
+    def reload(self, required=True):
+        try:
+            res = self._bucket.get(self._key)
         except MemcachedError, e:
             if e.status == 1 and not required:
                 pass
             else:
                 raise self.DoesNotExist(
-                    "Key {0} missing from couchbase.".format(self._id))
+                    "Key {0} missing from couchbase.".format(self._key))
         else:
             self.load_json(json.loads(res[2]), res[1])
         return self
 
-    def load_and_save(self, required=True, **kwargs):
-        self.load(required=required)
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
-        self.save()
+    def reload_and_save(self, required=True, **kwargs):
+        self.reload(required=required)
+        self.save(**kwargs)
         return self
 
     def to_json(self):
@@ -145,23 +168,25 @@ class Document(object):
         self._cas_value = cas_value
         return self
 
-    def save(self, prevent_overwrite=True, expiration=0):
+    def save(self, prevent_overwrite=True, expiration=0, **kwargs):
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
         if not prevent_overwrite:
             trash, self._cas_value, trash2 = self._bucket.set(
-                self._id, expiration, 0, self.to_json())
+                self._key, expiration, 0, self.to_json())
         else:
             if self._cas_value:
                 self._bucket.cas(
-                    self._id, expiration, 0, self._cas_value, self.to_json())
+                    self._key, expiration, 0, self._cas_value, self.to_json())
             else:
                 trash, self._cas_value, trash2 = self._bucket.add(
-                    self._id, expiration, 0, self.to_json())
+                    self._key, expiration, 0, self.to_json())
         return self
 
     def delete(self):
-        if not self._id:
+        if not self._key:
             raise ValueError("Cannot delete if no ID")
-        self._bucket.delete(self._id)
+        self._bucket.delete(self._key)
 
     def __setattr__(self, key, value):
         if key != '_anything_set' and \
@@ -177,8 +202,8 @@ class Document(object):
             if not self._cas_value and not self._anything_set:
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug("Lazy loading {0} for field {1}".format(
-                        self._id, name))
-                self.load()
+                        self._key, name))
+                self.reload()
                 return getattr(self, name)
             else:
                 d = self._meta['_fields'][name].default

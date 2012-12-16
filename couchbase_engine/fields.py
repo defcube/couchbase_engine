@@ -1,7 +1,7 @@
 import dateutil
 
 
-_empty = object()
+empty = object()
 
 
 class BaseField(object):
@@ -12,10 +12,14 @@ class BaseField(object):
 
     cast_to_type = None
 
-    def __init__(self, label=None, default=_empty):
-        if default != _empty:
+    def __init__(self, label=None, default=empty):
+        if default != empty:
             self.default = default
         self.label = label
+        self.meta = None
+
+    def register_meta(self, meta):
+        self.meta = meta
 
     def get_default(self):
         try:
@@ -26,6 +30,9 @@ class BaseField(object):
             return d()
         else:
             return d
+
+    def add_to_object(self, name, obj):
+        setattr(obj, name, self.get_default())
 
     def from_json(self, jsn):
         if jsn is None:
