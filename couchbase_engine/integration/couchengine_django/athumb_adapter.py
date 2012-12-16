@@ -1,6 +1,3 @@
-import os
-import datetime
-from django.utils.encoding import force_unicode, smart_str
 from athumb.fields import ImageWithThumbsFieldFile
 from couchbase_engine.fields import BaseField, empty
 
