@@ -1,0 +1,3 @@
+pytest
+-e git+git@github.com:defcube/couchbase-python-client.git#egg=couchbase
+python-dateutil

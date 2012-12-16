@@ -16,6 +16,9 @@ Supported Features
 * Support for design document creation.
 * Integrates with django (optional)
 
+Installation
+------------
+Download the requirements as listed in requirements.txt. If you have problems, please be sure to install our *custom version of the couchbase api* (from the requirements.txt).
 
 Basic Usage
 -----------

@@ -69,10 +69,14 @@ class _DocumentMetaclass(type):
 
 _empty = object()
 
+
 class Document(object):
     __metaclass__ = _DocumentMetaclass
 
     class DoesNotExist(Exception):
+        pass
+
+    class DataCollisionError(Exception):
         pass
 
     def __init__(self, key, _i_mean_it=False):
@@ -82,8 +86,10 @@ class Document(object):
         super(Document, self).__init__()
         self._key = key
         self._cas_value = None
+        self._modified = dict()
         for k, field in self._meta['_fields'].iteritems():
             field.add_to_object(k, self)
+        self._modified.clear()
 
     @classmethod
     def get_bucket(cls):
@@ -150,6 +156,9 @@ class Document(object):
         self.save(**kwargs)
         return self
 
+    def soft_reload(self):
+        self.reload()
+
     def to_json(self):
         m = {'_type': self._meta['_type']}
         for key, field in self._meta['_fields'].iteritems():
@@ -165,6 +174,16 @@ class Document(object):
     def load_json(self, json, cas_value=None):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
+                try:
+                    origvalue = self._modified[key]
+                except KeyError:
+                    pass
+                else:
+                    if val == origvalue:
+                        continue
+                    raise self.DataCollisionError(
+                        "{0} has been modified locally and externally, and "
+                        "therefore cannot be reloaded.".format(key))
                 setattr(self, key,
                         self._meta['_fields'][key].from_json(self, val))
         self._cas_value = cas_value
@@ -177,12 +196,19 @@ class Document(object):
             trash, self._cas_value, trash2 = self._bucket.set(
                 self._key, expiration, 0, self.to_json())
         else:
-            if self._cas_value:
-                self._bucket.cas(
-                    self._key, expiration, 0, self._cas_value, self.to_json())
-            else:
-                trash, self._cas_value, trash2 = self._bucket.add(
-                    self._key, expiration, 0, self.to_json())
+            try:
+                if self._cas_value:
+                    self._bucket.cas(self._key, expiration, 0, self._cas_value,
+                                     self.to_json())
+                else:
+                    trash, self._cas_value, trash2 = self._bucket.add(
+                        self._key, expiration, 0, self.to_json())
+            except MemcachedError, e:
+                if e.status != 2:
+                    raise
+                self.soft_reload()
+                self.save()
+        self._modified.clear()
         return self
 
     def delete(self):
@@ -199,6 +225,8 @@ class Document(object):
             pass
         else:
             value = field.prepare_setattr_value(self, key, value)
+            if not self._modified.has_key(key):
+                self._modified[key] = getattr(self, key)
         return super(Document, self).__setattr__(key, value)
 
     def __getattribute__(self, name):

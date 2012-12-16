@@ -1,5 +1,4 @@
-from couchbase_engine.utils.functional import SimpleLazyObject
-from utils.functional import LazyObject, empty
+from utils.functional import SimpleLazyObject, LazyObject, empty
 import couchbase
 import json
 
