@@ -1,3 +1,6 @@
+import os
+import datetime
+from django.utils.encoding import force_unicode, smart_str
 from athumb.fields import ImageWithThumbsFieldFile
 from couchbase_engine.fields import BaseField, empty
 
@@ -19,9 +22,6 @@ class ImageWithThumbsField(BaseField):
             return value
         return ImageWithThumbsFieldFile(obj, self, value)
 
-    def generate_filename(self, instance, filename):
-        return filename
-
     def default(self):
         return None
 
@@ -32,3 +32,12 @@ class ImageWithThumbsField(BaseField):
         if val is None or val.name is None:
             return ""
         return val.name
+
+    #noinspection PyMethodOverriding
+    def should_write_value(self, value):
+        return super(ImageWithThumbsField, self).should_write_value(
+            value, lambda x: x if x else None)
+
+    #noinspection PyUnusedLocal
+    def generate_filename(self, instance, filename):
+        return self.upload_to(instance, filename)
