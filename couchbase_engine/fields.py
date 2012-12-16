@@ -102,7 +102,7 @@ class SetField(BaseField):
         return list(set([self._contains.to_json(x) for x in val]))
 
     def from_json(self, obj, jsn):
-        return set([self._contains.from_json(x) for x in jsn])
+        return set([self._contains.from_json(obj, x) for x in jsn])
 
     def should_write_value(self, value):
         return super(SetField, self).should_write_value(value,
