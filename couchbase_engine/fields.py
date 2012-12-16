@@ -18,6 +18,9 @@ class BaseField(object):
         self.label = label
         self.meta = None
 
+    def register_name(self, name):
+        self.name = name
+
     def register_meta(self, meta):
         self.meta = meta
 
@@ -34,7 +37,10 @@ class BaseField(object):
     def add_to_object(self, name, obj):
         setattr(obj, name, self.get_default())
 
-    def from_json(self, jsn):
+    def prepare_setattr_value(self, obj, name, val):
+        return val
+
+    def from_json(self, obj, jsn):
         if jsn is None:
             return jsn
         if self.cast_to_type:
@@ -81,7 +87,7 @@ class DateTimeField(BaseField):
             return val
         return str(val)
 
-    def from_json(self, jsn):
+    def from_json(self, obj, jsn):
         return dateutil.parser.parse(jsn)
 
 
@@ -95,7 +101,7 @@ class SetField(BaseField):
     def to_json(self, val):
         return list(set([self._contains.to_json(x) for x in val]))
 
-    def from_json(self, jsn):
+    def from_json(self, obj, jsn):
         return set([self._contains.from_json(x) for x in jsn])
 
     def should_write_value(self, value):

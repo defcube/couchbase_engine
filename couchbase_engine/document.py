@@ -59,6 +59,7 @@ class _DocumentMetaclass(type):
                 continue
             if isinstance(val, BaseField):
                 val.register_meta(meta)
+                val.register_name(attr)
                 meta['_fields'][attr] = val
                 dct[attr] = None
         res = super(_DocumentMetaclass, mcs).__new__(mcs, name, bases, dct)
@@ -164,7 +165,8 @@ class Document(object):
     def load_json(self, json, cas_value=None):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
-                setattr(self, key, self._meta['_fields'][key].from_json(val))
+                setattr(self, key,
+                        self._meta['_fields'][key].from_json(self, val))
         self._cas_value = cas_value
         return self
 
@@ -189,11 +191,14 @@ class Document(object):
         self._bucket.delete(self._key)
 
     def __setattr__(self, key, value):
-        if key != '_anything_set' and \
-                not getattr(self, '_anything_set', False):
-            self.__dict__['_anything_set'] = True
         if not key.startswith('_') and not key in self._meta['_fields']:
             raise KeyError("Invalid attribute for model: {0}".format(key))
+        try:
+            field = self._meta['_fields'][key]
+        except KeyError:
+            pass
+        else:
+            value = field.prepare_setattr_value(self, key, value)
         return super(Document, self).__setattr__(key, value)
 
     def __getattribute__(self, name):
