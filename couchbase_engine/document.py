@@ -179,7 +179,10 @@ class Document(object):
                 except KeyError:
                     pass
                 else:
-                    if val == origvalue:
+                    origvalue = self._meta['_fields'][key].to_json(origvalue)
+                    currentvalue = self._meta['_fields'][key].to_json(
+                        getattr(self, key))
+                    if val == origvalue or val == currentvalue:
                         continue
                     raise self.DataCollisionError(
                         "{0} has been modified locally and externally, and "
