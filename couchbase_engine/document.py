@@ -3,10 +3,10 @@ import copy
 import connection
 from couchbase.exception import MemcachedError
 from couchbase.rest_client import DesignDocNotFoundError
-from couchbase_engine.utils.functional import LazyObject
 from fields import BaseField
 import json
 import logging
+
 
 logger = logging.getLogger('couchbase_engine')
 bucket_documentclass_index = defaultdict(lambda: {})
@@ -98,7 +98,8 @@ class Document(object):
 
     @classmethod
     def get_objects(cls, ddoc_name, view_name, args=None, limit=100):
-        """Loads objects from a view.
+        """
+        Loads objects from a view.
 
         Objects are lazy-loaded.
 
@@ -228,7 +229,7 @@ class Document(object):
             pass
         else:
             value = field.prepare_setattr_value(self, key, value)
-            if not self._modified.has_key(key):
+            if key not in self._modified:
                 self._modified[key] = getattr(self, key)
         return super(Document, self).__setattr__(key, value)
 
@@ -260,10 +261,23 @@ class _LazyViewQuery(object):
         self.args = args
         self.default_limit = default_limit
 
+    def __repr__(self):
+        #noinspection PyTypeChecker
+        return "<_LazyViewQuery {self.cls} _design/{self.ddoc_name}/_view/"\
+               "{self.view_name} args:{self.args} default_limit:"\
+               "{self.default_limit}>".format(self=self)
+
     def get_results(self, args, limit):
         args = self._merge_args(args)
-        return self.cls.get_bucket().view_result_objects(
+        res = self.cls.get_bucket().view_result_objects(
             self.ddoc_name, self.view_name, args, limit)
+        if logger.isEnabledFor(logging.DEBUG):
+            #noinspection PyTypeChecker
+            logger.debug(
+                "Getting view results. {self.ddoc_name}.{self.view_name} "
+                "{args} limit:{limit}".format(
+                    self=self, args=args, limit=limit))
+        return res
 
     def _merge_args(self, new_args):
         args = self.args.copy()
@@ -273,16 +287,34 @@ class _LazyViewQuery(object):
     def __getitem__(self, item):
         if hasattr(item, 'start') and hasattr(item, 'stop'):
             if item.stop is None:
-                return self.get_results({'offset': item.start},
+                return self.get_results({'skip': item.start},
                                         self.default_limit)
             elif item.start is None:
                 return self.get_results({}, item.stop)
             else:
-                return self.get_results({'offset': item.start},
+                return self.get_results({'skip': item.start},
                                         item.stop - item.start)
         else:
-            offset = int(item)
-            if offset > 0:
-                return self.get_results({'offset': offset}, 1)
+            skip = int(item)
+            if skip > 0:
+                return self.get_results({'skip': skip}, 1)[0]
             else:
-                return self.get_results({}, 1)
+                return self.get_results({}, 1)[0]
+
+    def __iter__(self):
+        def iterator():
+            results = iter(self.get_results({}, self.default_limit))
+            last_r = None
+            while True:
+                try:
+                    last_r = results.next()
+                except StopIteration:
+                    if not last_r:
+                        raise
+                    results = iter(self.get_results(
+                        {'startkey_docid': last_r._key,
+                         'skip': 1,
+                         'startkey': last_r._view_key}, self.default_limit))
+                    last_r = results.next()
+                yield last_r
+        return iterator()

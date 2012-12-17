@@ -25,13 +25,14 @@ class _LazyBucket(LazyObject):
             self._setup()
         return self.__dict__['_wrapped']
 
-    def getobj(self, key):
+    def getobj(self, id, key=None):
         from document import bucket_documentclass_index
-        res = self._get_wrapped().get(key)
+        res = self._get_wrapped().get(id)
         jsn = json.loads(res[2])
         obj = bucket_documentclass_index[self._key][jsn['_type']](
-            key, _i_mean_it=True)
+            id, _i_mean_it=True)
         obj.load_json(jsn, res[1])
+        obj._view_key = key
         return obj
 
     def view_result_objects(self, design_doc, view, params=None, limit=100):
@@ -43,7 +44,7 @@ class _LazyBucket(LazyObject):
         res = rest.view_results(self.name, design_doc, view, params, limit)
 
         def lazyload(x):
-            return SimpleLazyObject(lambda: self.getobj(x['id']))
+            return SimpleLazyObject(lambda: self.getobj(x['id'], x['key']))
 
         return [lazyload(x) for x in res['rows']]
 
