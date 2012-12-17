@@ -7,7 +7,7 @@ class Foo(Document):
     field2 = fields.StringField()
 
 
-@pytest.fixture(params=['create', 'reload', 'reload_and_save'])
+@pytest.fixture(params=('create', 'reload', 'reload_and_save'))
 def foo(mode='create'):
     if mode == 'create':
         return Foo.create('foo', field1='foo', field2='foo')

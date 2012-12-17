@@ -3,6 +3,7 @@ import copy
 import connection
 from couchbase.exception import MemcachedError
 from couchbase.rest_client import DesignDocNotFoundError
+from couchbase_engine.utils.functional import LazyObject
 from fields import BaseField
 import json
 import logging
@@ -107,8 +108,7 @@ class Document(object):
         """
         if args is None:
             args = {}
-        return cls.get_bucket().view_result_objects(ddoc_name, view_name,
-                                                    args, limit)
+        return _LazyViewQuery(cls, ddoc_name, view_name, args, limit)
 
     @property
     def _bucket(self):
@@ -250,3 +250,39 @@ class Document(object):
                 setattr(self, name, d)
                 return d
         return val
+
+
+class _LazyViewQuery(object):
+    def __init__(self, cls, ddoc_name, view_name, args, default_limit=100):
+        self.cls = cls
+        self.ddoc_name = ddoc_name
+        self.view_name = view_name
+        self.args = args
+        self.default_limit = default_limit
+
+    def get_results(self, args, limit):
+        args = self._merge_args(args)
+        return self.cls.get_bucket().view_result_objects(
+            self.ddoc_name, self.view_name, args, limit)
+
+    def _merge_args(self, new_args):
+        args = self.args.copy()
+        args.update(new_args)
+        return args
+
+    def __getitem__(self, item):
+        if hasattr(item, 'start') and hasattr(item, 'stop'):
+            if item.stop is None:
+                return self.get_results({'offset': item.start},
+                                        self.default_limit)
+            elif item.start is None:
+                return self.get_results({}, item.stop)
+            else:
+                return self.get_results({'offset': item.start},
+                                        item.stop - item.start)
+        else:
+            offset = int(item)
+            if offset > 0:
+                return self.get_results({'offset': offset}, 1)
+            else:
+                return self.get_results({}, 1)
