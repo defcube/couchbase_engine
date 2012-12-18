@@ -3,6 +3,7 @@ import copy
 import connection
 from couchbase.exception import MemcachedError
 from couchbase.rest_client import DesignDocNotFoundError
+from couchbase_engine.utils.functional import SimpleLazyObject
 from fields import BaseField
 import json
 import logging
@@ -97,7 +98,8 @@ class Document(object):
         return connection.buckets[cls._meta['bucket']]
 
     @classmethod
-    def get_objects(cls, ddoc_name, view_name, args=None, limit=100):
+    def get_objects(cls, ddoc_name, view_name, args=None, limit=100,
+                    filter=None):
         """
         Loads objects from a view.
 
@@ -109,7 +111,8 @@ class Document(object):
         """
         if args is None:
             args = {}
-        return _LazyViewQuery(cls, ddoc_name, view_name, args, limit)
+        return _LazyViewQuery(cls, ddoc_name, view_name, args, limit,
+                              filter=filter)
 
     @property
     def _bucket(self):
@@ -254,12 +257,14 @@ class Document(object):
 
 
 class _LazyViewQuery(object):
-    def __init__(self, cls, ddoc_name, view_name, args, default_limit=100):
+    def __init__(self, cls, ddoc_name, view_name, args, default_limit=100,
+                 filter=None):
         self.cls = cls
         self.ddoc_name = ddoc_name
         self.view_name = view_name
         self.args = args
         self.default_limit = default_limit
+        self.filter = filter
 
     def __repr__(self):
         #noinspection PyTypeChecker
@@ -277,6 +282,8 @@ class _LazyViewQuery(object):
                 "Getting view results. {self.ddoc_name}.{self.view_name} "
                 "{args} limit:{limit}".format(
                     self=self, args=args, limit=limit))
+        if self.filter:
+            res = filter(self.filter, res)
         return res
 
     def _merge_args(self, new_args):
