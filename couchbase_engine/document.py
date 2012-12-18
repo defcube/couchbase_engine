@@ -271,6 +271,10 @@ class _LazyViewQuery(object):
                "{self.view_name} args:{self.args} default_limit:"\
                "{self.default_limit}>".format(self=self)
 
+    def __len__(self):
+        return self.cls.get_bucket().view_result_length(
+            self.ddoc_name, self.view_name, self.args)
+
     def get_results(self, args, limit):
         args = self._merge_args(args)
         res = self.cls.get_bucket().view_result_objects(

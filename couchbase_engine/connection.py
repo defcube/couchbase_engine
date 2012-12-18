@@ -35,18 +35,23 @@ class _LazyBucket(LazyObject):
         obj._view_key = key
         return obj
 
-    def view_result_objects(self, design_doc, view, params=None, limit=100):
+    def get_view_results(self, design_doc, view, params, limit):
         if params is None:
             params = {}
         if self._stale_default is not None:
             params.setdefault('stale', self._stale_default)
         rest = self.server._rest()
         res = rest.view_results(self.name, design_doc, view, params, limit)
+        return res
 
+    def view_result_length(self, design_doc, view, params=None):
+        return self.get_view_results(design_doc, view, params, 0)['total_rows']
+
+    def view_result_objects(self, design_doc, view, params=None, limit=100):
         def lazyload(x):
             return SimpleLazyObject(lambda: self.getobj(x['id'], x['key']))
-
-        return [lazyload(x) for x in res['rows']]
+        return [lazyload(x) for x in
+                self.get_view_results(design_doc, view, params, limit)['rows']]
 
     def __setitem__(self, key, value):
         self._get_wrapped()[key] = value
