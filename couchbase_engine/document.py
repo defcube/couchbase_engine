@@ -291,6 +291,9 @@ class _LazyViewQuery(object):
         args.update(new_args)
         return args
 
+    def all(self):
+        return self.get_results({}, None)
+
     def __getitem__(self, item):
         if hasattr(item, 'start') and hasattr(item, 'stop'):
             if item.stop is None:
