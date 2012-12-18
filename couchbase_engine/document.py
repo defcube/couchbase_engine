@@ -3,7 +3,6 @@ import copy
 import connection
 from couchbase.exception import MemcachedError
 from couchbase.rest_client import DesignDocNotFoundError
-from couchbase_engine.utils.functional import SimpleLazyObject
 from fields import BaseField
 import json
 import logging
