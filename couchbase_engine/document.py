@@ -177,11 +177,14 @@ class Document(object):
     def load_json(self, json, cas_value=None):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
+                from_json_val = self._meta['_fields'][key].from_json(self, val)
                 try:
                     origvalue = self._modified[key]
                 except KeyError:
-                    pass
+                    setattr(self, key, from_json_val)
                 else:
+                    if from_json_val == getattr(self, key):
+                        continue
                     origvalue = self._meta['_fields'][key].to_json(origvalue)
                     currentvalue = self._meta['_fields'][key].to_json(
                         getattr(self, key))
@@ -189,9 +192,9 @@ class Document(object):
                         continue
                     raise self.DataCollisionError(
                         "{0} has been modified locally and externally, and "
-                        "therefore cannot be reloaded.".format(key))
-                setattr(self, key,
-                        self._meta['_fields'][key].from_json(self, val))
+                        "therefore cannot be reloaded. orig: {1} "
+                        "current: {2} new: {3}".format(key, origvalue,
+                                                       currentvalue, val))
         self._cas_value = cas_value
         return self
 
