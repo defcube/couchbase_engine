@@ -65,7 +65,7 @@ class BaseField(object):
 
 
 class StringField(BaseField):
-    cast_to_type = str
+    cast_to_type = unicode
     default = ""
 
 
