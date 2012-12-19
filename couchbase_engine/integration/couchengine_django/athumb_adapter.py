@@ -14,7 +14,7 @@ class ImageWithThumbsField(BaseField):
             self.upload_to = upload_to
         self.thumbnail_format = thumbnail_format
 
-    def prepare_setattr_value(self, name, obj, value):
+    def prepare_setattr_value(self, obj, name, value):
         if isinstance(value, ImageWithThumbsFieldFile):
             return value
         return ImageWithThumbsFieldFile(obj, self, value)
