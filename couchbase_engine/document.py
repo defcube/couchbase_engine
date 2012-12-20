@@ -178,13 +178,15 @@ class Document(object):
     def load_json(self, json, cas_value=None):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
-                from_json_val = SimpleLazyObject(
-                    lambda:  self._meta['_fields'][key].from_json(self, val))
                 try:
                     origvalue = self._modified[key]
                 except KeyError:
-                    setattr(self, key, from_json_val)
+                    setattr(self, key, SimpleLazyObject(
+                            lambda: self._meta['_fields'][key].from_json(
+                                self, val)))
                 else:
+                    from_json_val = self._meta['_fields'][key].from_json(
+                        self, val)
                     if from_json_val == getattr(self, key):
                         continue
                     origvalue = self._meta['_fields'][key].to_json(origvalue)
