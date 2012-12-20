@@ -1,6 +1,5 @@
 import datetime
 import dateutil.parser
-from couchbase_engine.utils.functional import LazyObject, SimpleLazyObject
 
 
 empty = object()
@@ -37,7 +36,7 @@ class BaseField(object):
             return d
 
     def add_to_object(self, name, obj):
-        setattr(obj, name, self.get_default())
+        obj.__setattr__(name, self.get_default())
 
     def prepare_setattr_value(self, obj, name, val):
         return self.cast_to_type(val)

@@ -137,7 +137,7 @@ class Document(object):
     def create(cls, key, commit=True, **kwargs):
         obj = cls(key, _i_mean_it=True)
         for k, v in kwargs.iteritems():
-            setattr(obj, k, v)
+            obj.__setattr__(k, v)
         if commit:
             obj.save()
         return obj
@@ -181,7 +181,7 @@ class Document(object):
                 try:
                     origvalue = self._modified[key]
                 except KeyError:
-                    setattr(self, key, self._meta['_fields'][key].from_json(
+                    self.__setattr__(key, self._meta['_fields'][key].from_json(
                             self, val))
                 else:
                     from_json_val = self._meta['_fields'][key].from_json(
@@ -203,7 +203,7 @@ class Document(object):
 
     def save(self, prevent_overwrite=True, expiration=0, **kwargs):
         for k, v in kwargs.iteritems():
-            setattr(self, k, v)
+            self.__setattr__(k, v)
         if not prevent_overwrite:
             trash, self._cas_value, trash2 = self._bucket.set(
                 self._key, expiration, 0, self.to_json())
