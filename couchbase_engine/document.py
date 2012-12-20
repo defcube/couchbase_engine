@@ -181,9 +181,8 @@ class Document(object):
                 try:
                     origvalue = self._modified[key]
                 except KeyError:
-                    setattr(self, key, SimpleLazyObject(
-                            lambda: self._meta['_fields'][key].from_json(
-                                self, val)))
+                    setattr(self, key, self._meta['_fields'][key].from_json(
+                            self, val))
                 else:
                     from_json_val = self._meta['_fields'][key].from_json(
                         self, val)
@@ -237,8 +236,6 @@ class Document(object):
         except KeyError:
             pass
         else:
-            if value is not None:
-                value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
                 self._modified[key] = getattr(self, key)
         return super(Document, self).__setattr__(key, value)

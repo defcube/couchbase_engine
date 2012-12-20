@@ -35,7 +35,9 @@ def test_recoverable_overwrite(foo):
     assert foo.field1 == 'foo1'
     assert foo2.field1 == 'foo'
     assert freshfoo.field1 == 'foo1'
-    assert foo.field2 == foo2.field2 == freshfoo.field2 == 'foo2'
+    assert foo.field2 == 'foo2'
+    assert foo2.field2 == 'foo2'
+    assert freshfoo.field2 == 'foo2'
 
 
 def test_double_save_of_same_data():
