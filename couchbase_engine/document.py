@@ -236,6 +236,8 @@ class Document(object):
         except KeyError:
             pass
         else:
+            if value is not None:
+                value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
                 self._modified[key] = getattr(self, key)
         return super(Document, self).__setattr__(key, value)

@@ -39,6 +39,9 @@ class BaseField(object):
     def add_to_object(self, name, obj):
         setattr(obj, name, self.get_default())
 
+    def prepare_setattr_value(self, obj, name, val):
+        return self.cast_to_type(val)
+
     def from_json(self, obj, jsn):
         if jsn is None:
             return jsn
@@ -98,6 +101,14 @@ class DateTimeField(BaseField):
             return dateutil.parser.parse(jsn)
         else:
             raise RuntimeError("Cannot parse datetime")
+
+    def prepare_setattr_value(self, obj, name, val):
+        if isinstance(val, datetime.datetime):
+            return val
+        elif isinstance(val, datetime.date):
+            return datetime.datetime(val.year, val.month, val.day)
+        else:
+            return dateutil.parser.parse(val)
 
 
 class SetField(BaseField):
