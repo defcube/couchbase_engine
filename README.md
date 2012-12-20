@@ -20,6 +20,13 @@ Installation
 ------------
 Download the requirements as listed in requirements.txt. If you have problems, please be sure to install our *custom version of the couchbase api* (from the requirements.txt).
 
+Built for Speed
+---------------
+We've done several optimizations using cProfile to speed up common calls.
+
+* Documents and Fields are lazy-loaded
+* Date fields are internally (and transparently) stored as arrays, which turned out to be much faster than strftime().
+
 Basic Usage
 -----------
 
