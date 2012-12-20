@@ -114,6 +114,7 @@ class DateTimeField(BaseField):
 
 class SetField(BaseField):
     default = lambda x: set()
+    cast_to_type = set
 
     def __init__(self, contains, **kwargs):
         super(SetField, self).__init__(**kwargs)
