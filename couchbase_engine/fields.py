@@ -1,5 +1,6 @@
 import datetime
 import dateutil.parser
+from couchbase_engine.utils.functional import LazyObject, SimpleLazyObject
 
 
 empty = object()
@@ -39,8 +40,6 @@ class BaseField(object):
         setattr(obj, name, self.get_default())
 
     def prepare_setattr_value(self, obj, name, val):
-        if val is None:
-            return val
         return self.cast_to_type(val)
 
     def from_json(self, obj, jsn):
@@ -102,9 +101,7 @@ class DateTimeField(BaseField):
             raise RuntimeError("Cannot parse datetime")
 
     def prepare_setattr_value(self, obj, name, val):
-        if val is None:
-            return None
-        elif isinstance(val, datetime.datetime):
+        if isinstance(val, datetime.datetime):
             return val
         elif isinstance(val, datetime.date):
             return datetime.datetime(val.year, val.month, val.day)

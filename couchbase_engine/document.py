@@ -3,6 +3,7 @@ import copy
 import connection
 from couchbase.exception import MemcachedError
 from couchbase.rest_client import DesignDocNotFoundError
+from couchbase_engine.utils.functional import SimpleLazyObject
 from fields import BaseField
 import json
 import logging
@@ -177,7 +178,8 @@ class Document(object):
     def load_json(self, json, cas_value=None):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
-                from_json_val = self._meta['_fields'][key].from_json(self, val)
+                from_json_val = SimpleLazyObject(
+                    lambda:  self._meta['_fields'][key].from_json(self, val))
                 try:
                     origvalue = self._modified[key]
                 except KeyError:
@@ -233,7 +235,8 @@ class Document(object):
         except KeyError:
             pass
         else:
-            value = field.prepare_setattr_value(self, key, value)
+            if value is not None:
+                value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
                 self._modified[key] = getattr(self, key)
         return super(Document, self).__setattr__(key, value)
