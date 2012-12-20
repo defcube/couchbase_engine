@@ -242,25 +242,6 @@ class Document(object):
                 self._modified[key] = getattr(self, key)
         return super(Document, self).__setattr__(key, value)
 
-    def __getattribute__(self, name):
-        val = super(Document, self).__getattribute__(name)
-        if val == _empty and name in self._meta['_fields']:
-            if not self._cas_value and not self._anything_set:
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug("Lazy loading {0} for field {1}".format(
-                        self._key, name))
-                self.reload()
-                return getattr(self, name)
-            else:
-                d = self._meta['_fields'][name].default
-                if callable(d):
-                    d = d()
-                else:
-                    d = copy.deepcopy(d)
-                setattr(self, name, d)
-                return d
-        return val
-
 
 class _LazyViewQuery(object):
     def __init__(self, cls, ddoc_name, view_name, args, default_limit=100,
