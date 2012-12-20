@@ -1,5 +1,5 @@
 import datetime
-import time
+import dateutil.parser
 
 
 empty = object()
@@ -39,7 +39,9 @@ class BaseField(object):
         setattr(obj, name, self.get_default())
 
     def prepare_setattr_value(self, obj, name, val):
-        return val
+        if val is None:
+            return val
+        return self.cast_to_type(val)
 
     def from_json(self, obj, jsn):
         if jsn is None:
@@ -86,50 +88,28 @@ class DateTimeField(BaseField):
     def to_json(self, val):
         if val is None:
             return val
-        return str(self.to_datetime(val))
+        return [val.year, val.month, val.day, val.hour, val.minute, val.second,
+                val.microsecond]
 
     def from_json(self, obj, jsn):
-        """
-        code jacked from mongoengine -- ty!
-        """
-        return self.to_datetime(jsn)
-
-    def to_datetime(self, val):
-        if val is None:
-            return val
-        if isinstance(val, datetime.datetime):
-            return val
-        if isinstance(val, datetime.date):
-            return datetime.datetime(val.year, val.month, val.day)
-
-        # Attempt to parse a datetime:
-        # value = smart_str(value)
-        # split usecs, because they are not recognized by strptime.
-        if '.' in val:
-            try:
-                val, usecs = val.split('.')
-                usecs = int(usecs)
-            except ValueError:
-                return None
+        if jsn is None:
+            return None
+        elif isinstance(jsn, list):
+            return datetime.datetime(*jsn)
+        elif isinstance(jsn, basestring):
+            return dateutil.parser.parse(jsn)
         else:
-            usecs = 0
-        kwargs = {'microsecond': usecs}
-        try:  # Seconds are optional, so try converting seconds first.
-            return datetime.datetime(
-                *time.strptime(val, '%Y-%m-%d %H:%M:%S')[:6],
-                **kwargs)
-        except ValueError:
-            try:  # Try without seconds.
-                return datetime.datetime(
-                    *time.strptime(val, '%Y-%m-%d %H:%M')[:5],
-                    **kwargs)
-            except ValueError:  # Try without hour/minutes/seconds.
-                try:
-                    return datetime.datetime(
-                        *time.strptime(val, '%Y-%m-%d')[:3],
-                        **kwargs)
-                except ValueError:
-                    return None
+            raise RuntimeError("Cannot parse datetime")
+
+    def prepare_setattr_value(self, obj, name, val):
+        if val is None:
+            return None
+        elif isinstance(val, datetime.datetime):
+            return val
+        elif isinstance(val, datetime.date):
+            return datetime.datetime(val.year, val.month, val.day)
+        else:
+            return dateutil.parser.parse(val)
 
 
 class SetField(BaseField):
