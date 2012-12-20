@@ -56,21 +56,20 @@ Basic Usage
         }
 
 
-    d = TestDoc('foobar', field1='sourD').save()
-    d.speak()
+    # initialize with defaults
+    TestDoc.create('foobar', defaults={'field1':'ogkush'})
 
-    d = FooDoc('laika')
+    # Load the doc and update it
+    d = TestDoc.load('foobar').save(field1='sourD')
+    d.speak()
+    # Output: I am a testdoc: sourD
+
+    # Or treat it like an object
+    d = FooDoc.create('laika')
     d.name = 'Laika'
     d.save()
 
-    get_bucket().getobj('foobar').speak()
-    get_bucket('test').getobj('laika').speak()
 
-This generates the following output:
-
-    I am a testdoc: sourD
-    I am a testdoc: sourD
-    WoofWoofWoof says Laika
 
 
 
@@ -81,4 +80,3 @@ Future Wishlist
 * Support for complex arrays containing sub-arrays and dicts
 * Validation
 * clean() and clean_FIELDNAME() validation
-* pagination support in views
