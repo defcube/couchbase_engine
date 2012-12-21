@@ -141,7 +141,7 @@ class Bucket():
             params[key] = json.dumps(val)
         return self._rest('get', '/'.join(
             ['/{bucket_name}/_design', design_doc_name, '_view', view_name]),
-            params=params, port=8092).json
+            params=params, port=8092).json()
 
     def view_result_length(self, design_doc, view, params=None):
         return self.get_view_results(design_doc, view, params, 0)['total_rows']
@@ -149,5 +149,6 @@ class Bucket():
     def view_result_objects(self, design_doc, view, params=None, limit=100):
         def lazyload(x):
             return SimpleLazyObject(lambda: self.getobj(x['id'], x['key']))
-        return [lazyload(x) for x in
-                self.get_view_results(design_doc, view, params, limit)['rows']]
+
+        results = self.get_view_results(design_doc, view, params, limit)
+        return [lazyload(x) for x in results['rows']]
