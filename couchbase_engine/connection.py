@@ -105,7 +105,7 @@ class Bucket():
                           port=8092)
 
     def add(self, key, val, expiration=0):
-        if not self.mc.add(key, val, time=expiration):
+        if not self.mc.add(str(key), val, time=expiration):
             raise Bucket.MemcacheRefusalError()
         return val, 1  # 1 will most certainly result in a CAS failure
 
@@ -116,7 +116,7 @@ class Bucket():
             return self.mc.get(str(key)), 1
 
     def cas(self, key, value, cas, expiration=0):
-        if not self.mc.cas(key, value, cas, expiration):
+        if not self.mc.cas(str(key), value, cas, expiration):
             raise Bucket.MemcacheRefusalError()
 
     def getobj(self, id, key=None):
