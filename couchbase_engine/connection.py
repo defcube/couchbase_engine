@@ -133,6 +133,12 @@ class Bucket():
             params['limit'] = limit
         if self.settings['stale_default'] is not None:
             params.setdefault('stale', self.settings['stale_default'])
+	for key in ("key", "startkey", "endkey", "keys"):
+            try:
+                val = params[key]
+            except KeyError:
+                continue
+            params[key] = json.dumps(val)
         return self._rest('get', '/'.join(
             ['/{bucket_name}/_design', design_doc_name, '_view', view_name]),
             params=params, port=8092).json
