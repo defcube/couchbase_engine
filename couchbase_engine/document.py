@@ -1,9 +1,5 @@
 from collections import defaultdict
-import copy
 import connection
-from couchbase.exception import MemcachedError
-from couchbase.rest_client import DesignDocNotFoundError
-from couchbase_engine.utils.functional import SimpleLazyObject
 from fields import BaseField
 import json
 import logging
@@ -25,11 +21,10 @@ def create_design_documents(overwrite=False):
         "Loading these design documents: {0}".format(all_design_documents))
     for bucketkey, ddocs in all_design_documents.iteritems():
         bucket = get_bucket(bucketkey)
-        rest = bucket.server._rest()
         for ddoc_name, value in ddocs.iteritems():
             try:
-                rest.get_design_doc(bucket.name, ddoc_name)
-            except DesignDocNotFoundError:
+                bucket.get_design_doc(ddoc_name)
+            except connection.DesignDocNotFoundError:
                 pass
             else:
                 if not overwrite:
@@ -41,7 +36,7 @@ def create_design_documents(overwrite=False):
                             "OVERWRITING!".format(bucketkey, ddoc_name))
             logger.info("{0}: {1} is being created. ".format(
                 bucketkey, ddoc_name))
-            rest.create_design_doc(bucket.name, ddoc_name, value)
+            bucket.create_design_doc(ddoc_name, value)
 
 
 class _DocumentMetaclass(type):
@@ -143,16 +138,8 @@ class Document(object):
         return obj
 
     def reload(self, required=True):
-        try:
-            res = self._bucket.get(self._key)
-        except MemcachedError, e:
-            if e.status == 1 and not required:
-                pass
-            else:
-                raise self.DoesNotExist(
-                    "Key {0} missing from couchbase.".format(self._key))
-        else:
-            self.load_json(json.loads(res[2]), res[1])
+        res = self._bucket.get(self._key)
+        self.load_json(json.loads(res[0]), res[1])
         return self
 
     def reload_and_save(self, required=True, **kwargs):
@@ -175,7 +162,7 @@ class Document(object):
                 m[key] = val
         return json.dumps(m)
 
-    def load_json(self, json, cas_value=None):
+    def load_json(self, json, cas_value):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
                 try:
@@ -201,25 +188,19 @@ class Document(object):
         self._cas_value = cas_value
         return self
 
-    def save(self, prevent_overwrite=True, expiration=0, **kwargs):
+    def save(self, expiration=0, **kwargs):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
-        if not prevent_overwrite:
-            trash, self._cas_value, trash2 = self._bucket.set(
-                self._key, expiration, 0, self.to_json())
-        else:
-            try:
-                if self._cas_value:
-                    self._bucket.cas(self._key, expiration, 0, self._cas_value,
-                                     self.to_json())
-                else:
-                    trash, self._cas_value, trash2 = self._bucket.add(
-                        self._key, expiration, 0, self.to_json())
-            except MemcachedError, e:
-                if e.status != 2:
-                    raise
-                self.soft_reload()
-                self.save()
+        try:
+            if self._cas_value is not None:
+                self._bucket.cas(self._key, self.to_json(), self._cas_value,
+                                 expiration)
+            else:
+                trash, self._cas_value = self._bucket.add(
+                    self._key, self.to_json(), expiration)
+        except connection.Bucket.MemcacheRefusalError:
+            self.soft_reload()
+            self.save(expiration=expiration)
         self._modified.clear()
         return self
 

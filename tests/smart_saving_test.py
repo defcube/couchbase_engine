@@ -1,5 +1,8 @@
 from couchbase_engine import Document, fields
+import logging
 import pytest
+
+logger = logging.getLogger('couchbase_engine')
 
 
 class Foo(Document):
@@ -16,7 +19,8 @@ def foo(mode='create'):
         return Foo.load('foo')
     elif mode == 'reload_and_save':
         Foo.create('foo', field1='foo', field2='foo')
-        return Foo.load('foo').save()
+        foo = Foo.load('foo')
+        return foo.save()
     else:
         raise RuntimeError()
 
