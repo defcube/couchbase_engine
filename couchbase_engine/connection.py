@@ -135,7 +135,7 @@ class Bucket():
             params.setdefault('stale', self.settings['stale_default'])
         return self._rest('get', '/'.join(
             ['/{bucket_name}/_design', design_doc_name, '_view', view_name]),
-            params=params, port=8092).json()
+            params=params, port=8092).json
 
     def view_result_length(self, design_doc, view, params=None):
         return self.get_view_results(design_doc, view, params, 0)['total_rows']
