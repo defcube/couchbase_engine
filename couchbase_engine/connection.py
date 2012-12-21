@@ -109,8 +109,11 @@ class Bucket():
             raise Bucket.MemcacheRefusalError()
         return val, 1  # 1 will most certainly result in a CAS failure
 
-    def get(self, key):
-        return self.mc.gets(str(key))
+    def get(self, key, use_cas=False):
+        if use_cas:
+            return self.mc.gets(str(key))
+        else:
+            return self.mc.get(str(key)), 1
 
     def cas(self, key, value, cas, expiration=0):
         if not self.mc.cas(key, value, cas, expiration):

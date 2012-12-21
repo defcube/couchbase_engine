@@ -137,18 +137,17 @@ class Document(object):
             obj.save()
         return obj
 
-    def reload(self, required=True):
-        res = self._bucket.get(self._key)
-        self.load_json(json.loads(res[0]), res[1])
+    def reload(self, required=True, cas=False):
+        res, cas_value = self._bucket.get(self._key, use_cas=cas)
+        if res is None:
+            raise Document.DoesNotExist()
+        self.load_json(json.loads(res), cas_value)
         return self
 
     def reload_and_save(self, required=True, **kwargs):
         self.reload(required=required)
         self.save(**kwargs)
         return self
-
-    def soft_reload(self):
-        self.reload()
 
     def to_json(self):
         m = {'_type': self._meta['_type']}
@@ -170,6 +169,7 @@ class Document(object):
                 except KeyError:
                     setattr(self, key, self._meta['_fields'][key].from_json(
                             self, val))
+                    del self._modified[key]
                 else:
                     from_json_val = self._meta['_fields'][key].from_json(
                         self, val)
@@ -199,7 +199,7 @@ class Document(object):
                 trash, self._cas_value = self._bucket.add(
                     self._key, self.to_json(), expiration)
         except connection.Bucket.MemcacheRefusalError:
-            self.soft_reload()
+            self.reload(cas=True)
             self.save(expiration=expiration)
         self._modified.clear()
         return self
@@ -221,6 +221,10 @@ class Document(object):
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
                 self._modified[key] = getattr(self, key)
+            else:
+                logger.debug("Key {0} is already modified to {1}. Failed to set"
+                             " to {2}".format(key, self._modified[key],
+                                              getattr(self, key)))
         return super(Document, self).__setattr__(key, value)
 
 
