@@ -181,9 +181,9 @@ class Document(object):
                     if val == origvalue or val == currentvalue:
                         continue
                     if not self._meta['_fields'][key].have_values_changed(
-                        origvalue, val) or \
-                       not self._meta['_fields'][key].have_values_changed(
-                        currentvalue, val):
+                            origvalue, val) or \
+                        not self._meta['_fields'][key].have_values_changed(
+                            currentvalue, val):
                         continue
                     raise self.DataCollisionError(
                         "{0} has been modified locally and externally, and "

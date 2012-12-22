@@ -65,3 +65,27 @@ def test_dual_conflicting_modifications():
     with pytest.raises(Document.DataCollisionError):
         foo2.save()
 
+
+class SetFoo(Document):
+    field1 = fields.SetField(fields.IntegerField())
+
+
+def test_allows_different_sorting_of_list():
+    SetFoo.create('foo')
+    foo1 = SetFoo.load('foo')
+    foo2 = SetFoo.load('foo')
+    foo1.field1 = [1, 2, 3]
+    foo1.save()
+    foo2.field1 = [2, 1, 3]
+    foo2.save()
+
+
+def test_detects_different_set():
+    SetFoo.create('foo')
+    foo1 = SetFoo.load('foo')
+    foo2 = SetFoo.load('foo')
+    foo1.field1 = [1, 2, 3]
+    foo1.save()
+    foo2.field1 = [3, 2, 1, 4]
+    with pytest.raises(Document.DataCollisionError):
+        foo2.save()

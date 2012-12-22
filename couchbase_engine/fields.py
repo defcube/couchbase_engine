@@ -1,8 +1,9 @@
 import datetime
 import dateutil.parser
-from couchbase_engine.utils.functional import LazyObject, SimpleLazyObject
+import logging
 
 
+logger = logging.getLogger('couchbase_engine')
 empty = object()
 
 
