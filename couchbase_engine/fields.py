@@ -65,6 +65,9 @@ class BaseField(object):
         else:
             return value_sanitizer(value) != value_sanitizer(default)
 
+    def have_values_changed(self, a, b):
+        return a != b
+
 
 class StringField(BaseField):
     cast_to_type = unicode
@@ -120,10 +123,17 @@ class SetField(BaseField):
         self._contains = contains
 
     def to_json(self, val):
-        return list(set([self._contains.to_json(x) for x in val]))
+        return sorted(list(set([self._contains.to_json(x) for x in val])))
 
     def from_json(self, obj, jsn):
         return set([self._contains.from_json(obj, x) for x in jsn])
+
+    def have_values_changed(self, a, b):
+        if a is None and b is None:
+            return False
+        if a is None or b is None:
+            return True
+        return sorted(a) != sorted(b)
 
     #noinspection PyMethodOverriding
     def should_write_value(self, value):
