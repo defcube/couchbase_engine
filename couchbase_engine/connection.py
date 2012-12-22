@@ -115,17 +115,23 @@ class Bucket():
         else:
             return self.mc.get(str(key)), 1
 
+    def get_multi(self, keys):
+        return self.mc.get_multi([str(x) for x in keys])
+
     def cas(self, key, value, cas, expiration=0):
         if not self.mc.cas(str(key), value, cas, expiration):
             raise Bucket.MemcacheRefusalError()
 
-    def getobj(self, id, key=None):
+    def getobj(self, id, key=None, jsn=None):
         from document import bucket_documentclass_index
-        res = self.get(id)
-        jsn = json.loads(res[0])
+        if not jsn:
+            res, cas_value = self.get(id)
+            jsn = json.loads(res[0])
+        else:
+            cas_value = 1
         obj = bucket_documentclass_index[self.settings['key']][
             jsn['_type']](id, _i_mean_it=True)
-        obj.load_json(jsn, res[1])
+        obj.load_json(jsn, cas_value=cas_value)
         obj._view_key = key
         return obj
 
@@ -136,7 +142,7 @@ class Bucket():
             params['limit'] = limit
         if self.settings['stale_default'] is not None:
             params.setdefault('stale', self.settings['stale_default'])
-	for key in ("key", "startkey", "endkey", "keys"):
+        for key in ("key", "startkey", "endkey", "keys"):
             try:
                 val = params[key]
             except KeyError:
@@ -148,10 +154,3 @@ class Bucket():
 
     def view_result_length(self, design_doc, view, params=None):
         return self.get_view_results(design_doc, view, params, 0)['total_rows']
-
-    def view_result_objects(self, design_doc, view, params=None, limit=100):
-        def lazyload(x):
-            return SimpleLazyObject(lambda: self.getobj(x['id'], x['key']))
-
-        results = self.get_view_results(design_doc, view, params, limit)
-        return [lazyload(x) for x in results['rows']]

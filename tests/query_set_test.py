@@ -1,6 +1,9 @@
+import json
+
+import mock
+
 from couchbase_engine import Document, fields, register_design_document
 from couchbase_engine.document import create_design_documents
-import mock
 
 
 register_design_document('test', {'views': {
@@ -30,20 +33,25 @@ def test_skips():
 @mock.patch.object(Foo, 'get_bucket')
 def test_lazy_loads(mock_get_bucket):
     mock_bucket = mock_get_bucket()
-    mock_bucket.view_result_objects.return_value = range(10)
     Foo.get_objects('missing', 'missing')
     assert mock_bucket.method_calls == []
 
 
 #noinspection PyUnresolvedReferences
 @mock.patch.object(Foo, 'get_bucket')
-def test_skip_efficient(mock_get_bucket):
+def test_preload_result_is_efficient(mock_get_bucket):
     mock_bucket = mock_get_bucket()
-    mock_bucket.view_result_objects.return_value = range(8, 20)
+    mock_bucket.get_view_results.return_value = {
+        'rows': [dict(id=str(x), key=x) for x in xrange(8, 10)]}
+    mock_bucket.get_multi.return_value = dict(
+        [(str(x),
+          json.dumps({'_type': '{0}.{1}'.format(Foo.__module__, Foo.__name__)}))
+         for x in xrange(8, 10)])
     #noinspection PyStatementEffect
-    Foo.get_objects('missing', 'missing')[8:20]
-    assert mock_bucket.method_calls == [
-        mock.call.view_result_objects('missing', 'missing', {'skip': 8}, 12)]
+    Foo.get_objects('missing', 'missing')[8:10]
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
+        'missing', 'missing', {'skip': 8}, 2)
+    assert mock_bucket.method_calls[1] == mock.call.get_multi(['8', '9'])
 
 
 #noinspection PyUnresolvedReferences
@@ -51,22 +59,43 @@ def test_skip_efficient(mock_get_bucket):
 @mock.patch.object(Foo, 'get_bucket')
 def test_slice_efficient(mock_get_bucket):
     mock_bucket = mock_get_bucket()
-    mock_bucket.view_result_objects.return_value = range(8, 20)
+    mock_bucket.get_view_results.return_value = {
+        'rows': [dict(id=str(x), key=x) for x in xrange(8, 20)]}
+    mock_bucket.get_multi.return_value = dict(
+        [(str(x),
+          json.dumps({'_type': '{0}.{1}'.format(Foo.__module__, Foo.__name__)}))
+         for x in xrange(8, 20)])
     Foo.get_objects('missing', 'missing')[8:20]
-    assert mock_bucket.method_calls == [
-        mock.call.view_result_objects('missing', 'missing', {'skip': 8}, 12)]
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
+        'missing', 'missing', {'skip': 8}, 12)
+
+    reset_method_calls(mock_bucket)
     Foo.get_objects('missing', 'missing')[8:]
-    assert mock_bucket.method_calls[-1] == mock.call.view_result_objects(
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
         'missing', 'missing', {'skip': 8}, 100)
+
+    reset_method_calls(mock_bucket)
     Foo.get_objects('missing', 'missing')[:8]
-    assert mock_bucket.method_calls[-1] == mock.call.view_result_objects(
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
         'missing', 'missing', {}, 8)
+
+    reset_method_calls(mock_bucket)
     Foo.get_objects('missing', 'missing')[8]
-    assert mock_bucket.method_calls[-1] == mock.call.view_result_objects(
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
         'missing', 'missing', {'skip': 8}, 1)
+
+    reset_method_calls(mock_bucket)
     Foo.get_objects('missing', 'missing')[0]
-    assert mock_bucket.method_calls[-1] == mock.call.view_result_objects(
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
         'missing', 'missing', {}, 1)
+
+
+def reset_method_calls(mck):
+    while True:
+        try:
+            mck.method_calls.pop()
+        except IndexError:
+            return
 
 
 def test_iterator():
@@ -79,13 +108,3 @@ def test_iterator():
     # test again to confirm the qs can be iterated twice
     assert range(20) == [x.field1 for x in qs]
 
-
-#noinspection PyUnresolvedReferences
-#noinspection PyStatementEffect
-@mock.patch.object(Foo, 'get_bucket')
-def test_foo_efficient(mock_get_bucket):
-    mock_bucket = mock_get_bucket()
-    mock_bucket.view_result_objects.return_value = range(0, 5)
-    iter(Foo.get_objects('missing', 'missing', {}, limit=5)).next()
-    assert mock_bucket.method_calls == [
-        mock.call.view_result_objects('missing', 'missing', {}, 5)]

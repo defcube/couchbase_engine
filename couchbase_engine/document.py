@@ -249,18 +249,14 @@ class _LazyViewQuery(object):
             self.ddoc_name, self.view_name, self.args)
 
     def get_results(self, args, limit):
+        bucket = self.cls.get_bucket()
         args = self._merge_args(args)
-        res = self.cls.get_bucket().view_result_objects(
-            self.ddoc_name, self.view_name, args, limit)
-        if logger.isEnabledFor(logging.DEBUG):
-            #noinspection PyTypeChecker
-            logger.debug(
-                "Getting view results. {self.ddoc_name}.{self.view_name} "
-                "{args} limit:{limit}".format(
-                    self=self, args=args, limit=limit))
-        if self.filter:
-            res = filter(self.filter, res)
-        return res
+        vr_rows = self.cls.get_bucket().get_view_results(
+            self.ddoc_name, self.view_name, args, limit)['rows']
+        ids = [x['id'] for x in vr_rows]
+        data = bucket.get_multi(ids)
+        return [bucket.getobj(x['id'], x['key'], json.loads(data[x['id']]))
+                for x in vr_rows]
 
     def _merge_args(self, new_args):
         args = self.args.copy()
