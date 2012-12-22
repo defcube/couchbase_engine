@@ -104,6 +104,9 @@ class Bucket():
                                    'Accept': '*/*'},
                           port=8092)
 
+    def delete(self, key):
+        return self.mc.delete(key)
+
     def add(self, key, val, expiration=0):
         if not self.mc.add(str(key), val, time=expiration):
             raise Bucket.MemcacheRefusalError()
