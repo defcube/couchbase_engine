@@ -19,8 +19,11 @@ class ImageWithThumbsField(BaseField):
             return value
         return ImageWithThumbsFieldFile(obj, self, value)
 
-    def default(self):
-        return None
+    default = None
+
+    def add_to_object(self, name, obj):
+        setattr(obj, name, self.prepare_setattr_value(obj, name, self.default))
+
 
     def from_json(self, obj, jsn):
         return ImageWithThumbsFieldFile(obj, self, jsn)
