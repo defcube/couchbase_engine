@@ -118,6 +118,12 @@ class Bucket():
         else:
             return self.mc.get(str(key)), 1
 
+    def set_multi(self, value_dict):
+        new_dict = {}
+        for key, value in value_dict.iteritems():
+            new_dict[str(key)] = value
+        return self.mc.set_multi(new_dict)
+
     def get_multi(self, keys):
         return self.mc.get_multi([str(x) for x in keys])
 
