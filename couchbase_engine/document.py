@@ -218,6 +218,8 @@ class Document(object):
         self._bucket.delete(self._key)
 
     def __setattr__(self, key, value):
+        if key == 'image':
+            logger.info("{0}: Setting {1} to {2}".format(self._key, key, value))
         if not key.startswith('_') and not key in self._meta['_fields']:
             raise KeyError("Invalid attribute for model: {0}".format(key))
         try:
