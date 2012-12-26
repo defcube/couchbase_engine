@@ -169,7 +169,10 @@ class Document(object):
                 except KeyError:
                     setattr(self, key, self._meta['_fields'][key].from_json(
                             self, val))
-                    del self._modified[key]
+                    try:
+                        del self._modified[key]
+                    except KeyError:
+                        pass
                 else:
                     from_json_val = self._meta['_fields'][key].from_json(
                         self, val)
@@ -225,6 +228,8 @@ class Document(object):
             if value is not None:
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
+                if value == getattr(self, key):
+                    return
                 self._modified[key] = getattr(self, key)
             else:
                 logger.debug("Key {0} is already modified to {1}. Failed to set"
