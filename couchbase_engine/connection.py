@@ -142,7 +142,6 @@ class Bucket():
             jsn['_type']](id, _i_mean_it=True)
         obj.load_json(jsn, cas_value=cas_value)
         obj._view_key = key
-        obj._modified.clear()
         return obj
 
     def get_view_results(self, design_doc_name, view_name, params, limit):

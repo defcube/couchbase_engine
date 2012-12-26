@@ -52,6 +52,15 @@ def test_can_update_data_even_if_changed():
     f.save(field1='foo2')
     assert Foo.load('foo').field1 == 'foo2'
 
+def test_can_update_data_if_changed_to_itself():
+    Foo.create('foo', field1='foo', field2='foo')
+    f = Foo.load('foo')
+    f.field1 = 'foo'
+    f.save()
+    f.field1 = 'foo2'
+    f.save()
+
+
 
 def test_double_save_of_same_data():
     Foo.create('foo', field1='foo', field2='foo')

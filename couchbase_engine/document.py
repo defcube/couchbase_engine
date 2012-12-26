@@ -228,8 +228,7 @@ class Document(object):
             if value is not None:
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
-                if value != getattr(self, key):
-                    self._modified[key] = getattr(self, key)
+                self._modified[key] = getattr(self, key)
             else:
                 logger.debug("Key {0} is already modified to {1}. Failed to set"
                              " to {2}".format(key, self._modified[key],
