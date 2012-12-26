@@ -175,14 +175,14 @@ class Document(object):
                         self, val)
                     if from_json_val == getattr(self, key):
                         continue
+                    origvalue = self._meta['_fields'][key].to_json(origvalue)
+                    currentvalue = self._meta['_fields'][key].to_json(
+                        getattr(self, key))
                     if not self._meta['_fields'][key].have_values_changed(
                             origvalue, val) or\
                             not self._meta['_fields'][key].have_values_changed(
                             currentvalue, val):
                         continue
-                    origvalue = self._meta['_fields'][key].to_json(origvalue)
-                    currentvalue = self._meta['_fields'][key].to_json(
-                        getattr(self, key))
                     if val == origvalue or val == currentvalue:
                         continue
                     raise self.DataCollisionError(
