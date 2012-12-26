@@ -188,8 +188,8 @@ class Document(object):
                     raise self.DataCollisionError(
                         "{0} has been modified locally and externally, and "
                         "therefore cannot be reloaded. orig: {1} "
-                        "current: {2} new: {3}".format(key, origvalue,
-                                                       currentvalue, val))
+                        "current: {2} new: {3}. Modified: {4}".format(
+                            key, origvalue, currentvalue, val, self._modified))
         self._cas_value = cas_value
         return self
 

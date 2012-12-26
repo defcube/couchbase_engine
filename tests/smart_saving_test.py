@@ -44,9 +44,11 @@ def test_recoverable_overwrite(foo):
     assert freshfoo.field2 == 'foo2'
 
 
-def test_can_update_data():
+def test_can_update_data_even_if_changed():
     Foo.create('foo', field1='foo', field2='foo')
     f = Foo.load('foo')
+    f.field1 = 'foo'
+    f = Foo.load('foo').save(field1='foo3')
     f.save(field1='foo2')
     assert Foo.load('foo').field1 == 'foo2'
 
