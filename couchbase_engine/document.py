@@ -249,7 +249,7 @@ class Document(object):
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
                 self._modified[key] = getattr(self, key)
-                self._setlog[key].append("modified<--{0}".format(
+                self._setlog[key].append(u"modified<--{0}".format(
                     self._modified[key]))
             else:
                 logger.debug("Key {0} is already modified to {1}. Failed to set"
