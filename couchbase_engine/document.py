@@ -157,6 +157,8 @@ class Document(object):
         if res is None:
             raise Document.DoesNotExist()
         self.load_json(json.loads(res), cas_value)
+        for key in self._setlog.keys():
+            self._setlog[key].append("--donereload-- {0}".format(cas))
         return self
 
     def reload_and_save(self, required=True, **kwargs):
