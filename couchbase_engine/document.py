@@ -321,8 +321,17 @@ class _LazyViewQuery(object):
                           self.cache_time)
         ids = [x['id'] for x in vr_rows]
         data = bucket.get_multi(ids)
-        return [bucket.getobj(x['id'], x['key'], json.loads(data[x['id']]))
-                for x in vr_rows]
+        res = []
+        for x in vr_rows:
+            try:
+                data_for_row = data[x['id']]
+            except KeyError:
+                continue
+            res.append(
+                bucket.getobj(x['id'], x['key'], json.loads(data_for_row)))
+        return res
+#        return [
+#                for x in vr_rows]
 
     def _merge_args(self, new_args):
         args = self.args.copy()
