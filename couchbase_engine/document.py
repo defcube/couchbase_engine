@@ -93,7 +93,7 @@ class Document(object):
         return connection.buckets[cls._meta['bucket']]
 
     @classmethod
-    def get_objects(cls, ddoc_name, view_name, args=None, limit=100,
+    def get_objects(cls, ddoc_name, view_name, args=None, limit=10,
                     filter=None):
         """
         Loads objects from a view.
@@ -237,7 +237,7 @@ class Document(object):
 
 
 class _LazyViewQuery(object):
-    def __init__(self, cls, ddoc_name, view_name, args, default_limit=100,
+    def __init__(self, cls, ddoc_name, view_name, args, default_limit=10,
                  filter=None):
         self.cls = cls
         self.ddoc_name = ddoc_name
