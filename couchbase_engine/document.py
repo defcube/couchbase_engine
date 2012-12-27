@@ -259,7 +259,7 @@ class Document(object):
                 logger.debug("Key {0} is already modified to {1}. Failed to set"
                              " to {2}".format(key, self._modified[key],
                                               getattr(self, key)))
-        self._setlog[key].append(str(value))
+        self._setlog[key].append(unicode(value))
         return super(Document, self).__setattr__(key, value)
 
 
