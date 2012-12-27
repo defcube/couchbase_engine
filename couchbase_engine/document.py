@@ -152,7 +152,7 @@ class Document(object):
     def reload(self, required=True, cas=False):
         res, cas_value = self._bucket.get(self._key, use_cas=cas)
         if res is None:
-            raise Document.DoesNotExist()
+            raise Document.DoesNotExist(self._key)
         self.load_json(json.loads(res), cas_value)
         return self
 
