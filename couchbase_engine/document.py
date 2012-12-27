@@ -97,6 +97,7 @@ class Document(object):
         self._cas_value = None
         self._modified = dict()
         self._times_saved = 0
+        self._reload_history = []
         for k, field in self._meta['_fields'].iteritems():
             field.add_to_object(k, self)
         self._modified.clear()
@@ -156,6 +157,7 @@ class Document(object):
         res, cas_value = self._bucket.get(self._key, use_cas=cas)
         if res is None:
             raise Document.DoesNotExist()
+        self._reload_history.append(res)
         self.load_json(json.loads(res), cas_value)
         for key in self._setlog.keys():
             self._setlog[key].append("--donereload-- {0}".format(cas))
@@ -209,9 +211,9 @@ class Document(object):
                         "{0} has been modified locally and externally, and "
                         "therefore cannot be reloaded. orig: {1} "
                         "current: {2} new: {3}. Saved {5} times. "
-                        "Modified Log: {4}.".format(
+                        "Modified Log: {4}. Reload History: {6}".format(
                             key, origvalue, currentvalue, val, self._setlog,
-                            self._times_saved))
+                            self._times_saved, self._reload_history))
         self._cas_value = cas_value
         return self
 
