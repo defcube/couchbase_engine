@@ -281,14 +281,14 @@ class _LazyViewQuery(object):
 
     def get_lencache_key(self, args, limit):
         return ":".join(
-            ["cbelen", self.cls.get_bucket().settings['bucket_name'],
+            ["cbelen", self.cls.get_bucket().settings['bucket'],
              self.ddoc_name, self.view_name])
 
 
     def get_cache_key(self, args, limit):
         import hashlib
         return ":".join(
-            ["cbe", self.cls.get_bucket().settings['bucket_name'],
+            ["cbe", self.cls.get_bucket().settings['bucket'],
              self.ddoc_name, self.view_name,
              hashlib.sha512(str(args)).hexdigest(), str(limit)])
 
