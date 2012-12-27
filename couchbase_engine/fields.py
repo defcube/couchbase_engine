@@ -124,6 +124,8 @@ class SetField(BaseField):
         self._contains = contains
 
     def to_json(self, val):
+        if val is None:
+            return set()
         return sorted(list(set([self._contains.to_json(x) for x in val])))
 
     def from_json(self, obj, jsn):

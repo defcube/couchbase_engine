@@ -60,7 +60,7 @@ def test_view_with_cache(mock_get_bucket):
     import pylibmc
     register_cache(pylibmc.Client(['localhost:11211']))
     mock_bucket = mock_get_bucket()
-    mock_bucket.settings = {'bucket_name': 'foobar'}
+    mock_bucket.settings = {'bucket': 'foobar'}
     mock_bucket.get_view_results.return_value = {
         'rows': [dict(id=str(x), key=x) for x in xrange(8, 10)]}
     mock_bucket.get_multi.return_value = dict(
