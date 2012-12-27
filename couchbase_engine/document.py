@@ -226,6 +226,8 @@ class Document(object):
             self.save(expiration=expiration)
         self._modified.clear()
         self._times_saved += 1
+        for key in self._setlog.keys():
+            self._setlog[key].append("--save--")
         return self
 
     def delete(self):
