@@ -3,7 +3,7 @@ import json
 import mock
 
 from couchbase_engine import Document, fields, register_design_document
-from couchbase_engine.document import create_design_documents
+from couchbase_engine.document import create_design_documents, register_cache, unregister_cache
 
 
 register_design_document('test', {'views': {
@@ -52,6 +52,32 @@ def test_preload_result_is_efficient(mock_get_bucket):
     assert mock_bucket.method_calls[0] == mock.call.get_view_results(
         'missing', 'missing', {'skip': 8}, 2)
     assert mock_bucket.method_calls[1] == mock.call.get_multi(['8', '9'])
+
+
+#noinspection PyUnresolvedReferences
+@mock.patch.object(Foo, 'get_bucket')
+def test_view_with_cache(mock_get_bucket):
+    import pylibmc
+    register_cache(pylibmc.Client(['localhost:11211']))
+    mock_bucket = mock_get_bucket()
+    mock_bucket.settings = {'bucket_name': 'foobar'}
+    mock_bucket.get_view_results.return_value = {
+        'rows': [dict(id=str(x), key=x) for x in xrange(8, 10)]}
+    mock_bucket.get_multi.return_value = dict(
+        [(str(x),
+          json.dumps({'_type': '{0}.{1}'.format(Foo.__module__, Foo.__name__)}))
+         for x in xrange(8, 10)])
+    #noinspection PyStatementEffect
+    Foo.get_objects('missing', 'missing', cache_time=10)[8:10]
+    assert mock_bucket.method_calls[0] == mock.call.get_view_results(
+        'missing', 'missing', {'skip': 8}, 2)
+    assert mock_bucket.method_calls[1] == mock.call.get_multi(['8', '9'])
+    lenbefore = len(mock_bucket.method_calls)
+    Foo.get_objects('missing', 'missing', cache_time=10)[8:10]
+    assert lenbefore * 2 - 1 == len(mock_bucket.method_calls)
+    Foo.get_objects('missing', 'missing', cache_time=10)[1]
+    assert lenbefore * 2 - 1 < len(mock_bucket.method_calls)
+    unregister_cache()
 
 
 #noinspection PyUnresolvedReferences

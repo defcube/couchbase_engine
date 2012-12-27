@@ -8,10 +8,21 @@ import logging
 logger = logging.getLogger('couchbase_engine')
 bucket_documentclass_index = defaultdict(lambda: {})
 all_design_documents = defaultdict(lambda: {})
+cache = None
 
 
 def register_design_document(name, value, bucket='_default_'):
     all_design_documents[bucket][name] = json.dumps(value)
+
+
+def register_cache(new_cache):
+    global cache
+    cache = new_cache
+
+
+def unregister_cache():
+    global cache
+    cache = None
 
 
 def create_design_documents(overwrite=False):
@@ -95,7 +106,7 @@ class Document(object):
 
     @classmethod
     def get_objects(cls, ddoc_name, view_name, args=None, limit=100,
-                    filter=None):
+                    filter=None, cache_time=0):
         """
         Loads objects from a view.
 
@@ -108,7 +119,7 @@ class Document(object):
         if args is None:
             args = {}
         return _LazyViewQuery(cls, ddoc_name, view_name, args, limit,
-                              filter=filter)
+                              filter=filter, cache_time=cache_time)
 
     @property
     def _bucket(self):
@@ -242,13 +253,14 @@ class Document(object):
 
 class _LazyViewQuery(object):
     def __init__(self, cls, ddoc_name, view_name, args, default_limit=100,
-                 filter=None):
+                 filter=None, cache_time=0):
         self.cls = cls
         self.ddoc_name = ddoc_name
         self.view_name = view_name
         self.args = args
         self.default_limit = default_limit
         self.filter = filter
+        self.cache_time = cache_time
 
     def __repr__(self):
         #noinspection PyTypeChecker
@@ -257,14 +269,44 @@ class _LazyViewQuery(object):
                "{self.default_limit}>".format(self=self)
 
     def __len__(self):
-        return self.cls.get_bucket().view_result_length(
-            self.ddoc_name, self.view_name, self.args)
+        res = None
+        if self.cache_time and cache:
+            res = cache.get(self.get_lencache_key())
+        if res is None:
+            res = self.cls.get_bucket().view_result_length(
+                self.ddoc_name, self.view_name, self.args)
+            if self.cache_time and cache:
+                cache.set(self.get_lencache_key(), res, self.cache_time)
+        return res
+
+    def get_lencache_key(self, args, limit):
+        return ":".join(
+            ["cbelen", self.cls.get_bucket().settings['bucket_name'],
+             self.ddoc_name, self.view_name])
+
+
+    def get_cache_key(self, args, limit):
+        import hashlib
+        return ":".join(
+            ["cbe", self.cls.get_bucket().settings['bucket_name'],
+             self.ddoc_name, self.view_name,
+             hashlib.sha512(str(args)).hexdigest(), str(limit)])
 
     def get_results(self, args, limit):
+        global cache
+        vr_rows = None
+        if self.cache_time and cache:
+            vr_rows = cache.get(self.get_cache_key(args, limit))
+            if vr_rows:
+                vr_rows = json.loads(vr_rows)
         bucket = self.cls.get_bucket()
-        args = self._merge_args(args)
-        vr_rows = self.cls.get_bucket().get_view_results(
-            self.ddoc_name, self.view_name, args, limit)['rows']
+        if not vr_rows:
+            args = self._merge_args(args)
+            vr_rows = self.cls.get_bucket().get_view_results(
+                self.ddoc_name, self.view_name, args, limit)['rows']
+            if self.cache_time and cache:
+                cache.set(self.get_cache_key(args, limit), json.dumps(vr_rows),
+                          self.cache_time)
         ids = [x['id'] for x in vr_rows]
         data = bucket.get_multi(ids)
         return [bucket.getobj(x['id'], x['key'], json.loads(data[x['id']]))
