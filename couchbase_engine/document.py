@@ -84,6 +84,7 @@ class Document(object):
         self._key = key
         self._cas_value = None
         self._modified = dict()
+        self._times_saved = 0
         for k, field in self._meta['_fields'].iteritems():
             field.add_to_object(k, self)
         self._modified.clear()
@@ -191,8 +192,10 @@ class Document(object):
                     raise self.DataCollisionError(
                         "{0} has been modified locally and externally, and "
                         "therefore cannot be reloaded. orig: {1} "
-                        "current: {2} new: {3}. Modified: {4}".format(
-                            key, origvalue, currentvalue, val, self._modified))
+                        "current: {2} new: {3}. Saved {5} times. "
+                        "Modified: {4}".format(key, origvalue, currentvalue,
+                                               val, self._modified,
+                                               self._times_saved))
         self._cas_value = cas_value
         return self
 
@@ -210,6 +213,7 @@ class Document(object):
             self.reload(cas=True)
             self.save(expiration=expiration)
         self._modified.clear()
+        self._times_saved += 1
         return self
 
     def delete(self):
