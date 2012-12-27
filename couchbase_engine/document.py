@@ -91,14 +91,11 @@ class Document(object):
         if not _i_mean_it:
             raise RuntimeError("You probably want to call Document.load() or "
                                "Document.create()")
-        self.__dict__['_setlog'] = defaultdict(lambda: [])
         super(Document, self).__init__()
         self._key = key
         self._cas_value = None
         self._last_json_value = {}
         self._modified = dict()
-        self._times_saved = 0
-        self._reload_history = []
         for k, field in self._meta['_fields'].iteritems():
             field.add_to_object(k, self)
         self._modified.clear()
@@ -153,15 +150,10 @@ class Document(object):
         return obj
 
     def reload(self, required=True, cas=False):
-        for key in self._setlog.keys():
-            self._setlog[key].append("--reload-- {0}".format(cas))
         res, cas_value = self._bucket.get(self._key, use_cas=cas)
         if res is None:
             raise Document.DoesNotExist()
-        self._reload_history.append(res)
         self.load_json(json.loads(res), cas_value)
-        for key in self._setlog.keys():
-            self._setlog[key].append("--donereload-- {0}".format(cas))
         return self
 
     def reload_and_save(self, required=True, **kwargs):
@@ -222,21 +214,13 @@ class Document(object):
                         continue
                     if val == origvalue or val == currentvalue:
                         continue
-                    raise self.DataCollisionError(
-                        "{0} has been modified locally and externally, and "
-                        "therefore cannot be reloaded. orig: {1} "
-                        "current: {2} new: {3}. Saved {5} times. "
-                        "Modified Log: {4}. Reload History: {6}".format(
-                            key, origvalue, currentvalue, val, self._setlog,
-                            self._times_saved, self._reload_history))
+                    raise self.DataCollisionError()
         self._cas_value = cas_value
         return self
 
     def save(self, expiration=0, **kwargs):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
-        for key in self._setlog.keys():
-            self._setlog[key].append("--save-- {0}".format(kwargs))
         try:
             if self._cas_value is not None:
                 self._bucket.cas(self._key, self.to_json(), self._cas_value,
@@ -249,7 +233,6 @@ class Document(object):
             self.reload(cas=True)
             self.save(expiration=expiration)
         self._modified.clear()
-        self._times_saved += 1
         return self
 
     def delete(self):
@@ -269,15 +252,10 @@ class Document(object):
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
                 self._modified[key] = True
-#                self._modified[key] = self._meta['_fields'][key].to_json(
-#                    getattr(self, key))
-                self._setlog[key].append(u"modified<--{0}".format(
-                    self._modified[key]))
             else:
                 logger.debug("Key {0} is already modified to {1}. Failed to set"
                              " to {2}".format(key, self._modified[key],
                                               getattr(self, key)))
-        self._setlog[key].append(unicode(value))
         return super(Document, self).__setattr__(key, value)
 
 
