@@ -151,6 +151,8 @@ class Document(object):
         return obj
 
     def reload(self, required=True, cas=False):
+        for key in self._setlog.keys():
+            self._setlog[key].append("--reload-- {0}".format(cas))
         res, cas_value = self._bucket.get(self._key, use_cas=cas)
         if res is None:
             raise Document.DoesNotExist()
