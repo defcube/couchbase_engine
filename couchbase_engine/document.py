@@ -197,7 +197,6 @@ class Document(object):
                         self, val)
                     if from_json_val == getattr(self, key):
                         continue
-                    origvalue = self._meta['_fields'][key].to_json(origvalue)
                     currentvalue = self._meta['_fields'][key].to_json(
                         getattr(self, key))
                     if not self._meta['_fields'][key].have_values_changed(
@@ -252,7 +251,8 @@ class Document(object):
             if value is not None:
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
-                self._modified[key] = getattr(self, key)
+                self._modified[key] = self._meta['_fields'][key].to_json(
+                    getattr(self, key))
                 self._setlog[key].append(u"modified<--{0}".format(
                     self._modified[key]))
             else:
