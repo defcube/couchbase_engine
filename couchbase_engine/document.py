@@ -91,6 +91,7 @@ class Document(object):
         if not _i_mean_it:
             raise RuntimeError("You probably want to call Document.load() or "
                                "Document.create()")
+        self.__dict__['_setlog'] = defaultdict(lambda: [])
         super(Document, self).__init__()
         self._key = key
         self._cas_value = None
@@ -204,9 +205,9 @@ class Document(object):
                         "{0} has been modified locally and externally, and "
                         "therefore cannot be reloaded. orig: {1} "
                         "current: {2} new: {3}. Saved {5} times. "
-                        "Modified: {4}".format(key, origvalue, currentvalue,
-                                               val, self._modified,
-                                               self._times_saved))
+                        "Modified Log: {4}.".format(
+                            key, origvalue, currentvalue, val, self._setlog,
+                            self._times_saved))
         self._cas_value = cas_value
         return self
 
@@ -248,6 +249,7 @@ class Document(object):
                 logger.debug("Key {0} is already modified to {1}. Failed to set"
                              " to {2}".format(key, self._modified[key],
                                               getattr(self, key)))
+        self._setlog[key].append(value)
         return super(Document, self).__setattr__(key, value)
 
 
