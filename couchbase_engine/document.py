@@ -214,6 +214,8 @@ class Document(object):
     def save(self, expiration=0, **kwargs):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
+        for key in self._setlog.keys():
+            self._setlog[key].append("--save-- {0}".format(kwargs))
         try:
             if self._cas_value is not None:
                 self._bucket.cas(self._key, self.to_json(), self._cas_value,
@@ -226,8 +228,6 @@ class Document(object):
             self.save(expiration=expiration)
         self._modified.clear()
         self._times_saved += 1
-        for key in self._setlog.keys():
-            self._setlog[key].append("--save--")
         return self
 
     def delete(self):
