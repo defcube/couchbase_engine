@@ -147,6 +147,8 @@ class Bucket():
     def get_view_results(self, design_doc_name, view_name, params, limit):
         if params is None:
             params = {}
+        else:
+            params = dict(params)
         if limit is not None:
             params['limit'] = limit
         if self.settings['stale_default'] is not None:
