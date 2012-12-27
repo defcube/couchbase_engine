@@ -95,6 +95,7 @@ class Document(object):
         super(Document, self).__init__()
         self._key = key
         self._cas_value = None
+        self._last_json_value = {}
         self._modified = dict()
         self._times_saved = 0
         self._reload_history = []
@@ -184,14 +185,21 @@ class Document(object):
         for key, val in json.iteritems():
             if key in self._meta['_fields']:
                 try:
-                    origvalue = self._modified[key]
+                    origvalue = self._last_json_value[key]
                 except KeyError:
+                    if key in self._modified and \
+                            self._meta['_fields'][key].to_json(
+                            getattr(self, key)) != val:
+                        raise Document.DataCollisionError(
+                            "It's _modified and not equal to current val")
                     setattr(self, key, self._meta['_fields'][key].from_json(
                             self, val))
                     try:
                         del self._modified[key]
                     except KeyError:
                         pass
+                    self._last_json_value[key] = \
+                        self._meta['_fields'][key].to_json(getattr(self, key))
                 else:
                     from_json_val = self._meta['_fields'][key].from_json(
                         self, val)
@@ -203,6 +211,14 @@ class Document(object):
                             origvalue, val) or\
                             not self._meta['_fields'][key].have_values_changed(
                             currentvalue, val):
+                        continue
+                    if not self._meta['_fields'][key].have_values_changed(
+                            currentvalue, origvalue):
+                        setattr(self, key, self._meta['_fields'][key].from_json(
+                            self, val))
+                        self._last_json_value[key] =\
+                            self._meta['_fields'][key].to_json(
+                                getattr(self, key))
                         continue
                     if val == origvalue or val == currentvalue:
                         continue
@@ -228,6 +244,7 @@ class Document(object):
             else:
                 trash, self._cas_value = self._bucket.add(
                     self._key, self.to_json(), expiration)
+            self._last_json_value = json.loads(self.to_json())
         except connection.Bucket.MemcacheRefusalError:
             self.reload(cas=True)
             self.save(expiration=expiration)
@@ -251,8 +268,9 @@ class Document(object):
             if value is not None:
                 value = field.prepare_setattr_value(self, key, value)
             if key not in self._modified:
-                self._modified[key] = self._meta['_fields'][key].to_json(
-                    getattr(self, key))
+                self._modified[key] = True
+#                self._modified[key] = self._meta['_fields'][key].to_json(
+#                    getattr(self, key))
                 self._setlog[key].append(u"modified<--{0}".format(
                     self._modified[key]))
             else:
