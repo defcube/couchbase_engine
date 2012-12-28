@@ -71,11 +71,8 @@ class Bucket():
         self.settings = {'username': username, 'password': password,
                          'bucket_name': bucket_name, 'rest_host': rest_host,
                          'stale_default': stale_default, 'key': key}
-        self.cb = couchbase.Couchbase('localhost:8091', username,
-                                      password).bucket(bucket_name)
-#        self.mc = pylibmc.Client(['{0}:{1}'.format(moxi_host, moxi_port)],
-#                                 binary=True)
-#        self.mc.behaviors['cas'] = True
+        self.cb = couchbase.Couchbase('{0}:8091'.format(rest_host),
+                                      username, password).bucket(bucket_name)
 
     def _rest(self, method, url, port, data=None, headers=None, params=None):
         r = requests.request(method,
