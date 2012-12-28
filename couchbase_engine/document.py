@@ -322,14 +322,12 @@ class _LazyViewQuery(object):
                           self.cache_time)
         res = []
         for x in vr_rows:
-            res.append(
-                bucket.getobj(x['id'], x['key'], x['doc']['json']))
+            res.append(bucket.getobj(x['id'], x['key']))
         return res
 
     def _merge_args(self, new_args):
         args = self.args.copy()
         args.update(new_args)
-        args['include_docs'] = True
         return args
 
     def all(self):
