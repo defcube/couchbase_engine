@@ -156,6 +156,8 @@ class Document(object):
         except MemcachedError, e:
             if e.status == 1:
                 raise Document.DoesNotExist(self._key)
+            else:
+                raise
         self.load_json(json.loads(res), cas_value)
         return self
 
