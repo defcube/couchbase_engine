@@ -1,4 +1,5 @@
 from collections import defaultdict
+from couchbase.exception import MemcachedError
 import connection
 from fields import BaseField
 import json
@@ -150,9 +151,11 @@ class Document(object):
         return obj
 
     def reload(self, required=True):
-        res, cas_value = self._bucket.get(self._key)
-        if res is None:
-            raise Document.DoesNotExist(self._key)
+        try:
+            res, cas_value = self._bucket.get(self._key)
+        except MemcachedError, e:
+            if e.status == 1:
+                raise Document.DoesNotExist(self._key)
         self.load_json(json.loads(res), cas_value)
         return self
 
