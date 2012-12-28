@@ -1,4 +1,5 @@
-import pylibmc
+import couchbase
+from couchbase.exception import MemcachedError
 from requests import HTTPError
 from utils.functional import SimpleLazyObject, LazyObject, empty
 import json
@@ -70,9 +71,11 @@ class Bucket():
         self.settings = {'username': username, 'password': password,
                          'bucket_name': bucket_name, 'rest_host': rest_host,
                          'stale_default': stale_default, 'key': key}
-        self.mc = pylibmc.Client(['{0}:{1}'.format(moxi_host, moxi_port)],
-                                 binary=True)
-        self.mc.behaviors['cas'] = True
+        self.cb = couchbase.Couchbase('localhost:8091', username,
+                                      password).bucket(bucket_name)
+#        self.mc = pylibmc.Client(['{0}:{1}'.format(moxi_host, moxi_port)],
+#                                 binary=True)
+#        self.mc.behaviors['cas'] = True
 
     def _rest(self, method, url, port, data=None, headers=None, params=None):
         r = requests.request(method,
@@ -105,31 +108,30 @@ class Bucket():
                           port=8092)
 
     def delete(self, key):
-        return self.mc.delete(key)
+        return self.cb.delete(key)
 
     def add(self, key, val, expiration=0):
-        if not self.mc.add(str(key), val, time=expiration):
-            raise Bucket.MemcacheRefusalError()
-        return val, 1  # 1 will most certainly result in a CAS failure
+        try:
+            res = self.cb.add(str(key), expiration, 0, val)
+        except MemcachedError, e:
+            if e.status == 2:
+                raise Bucket.MemcacheRefusalError()
+            else:
+                raise
+        return val, res[1]
 
-    def get(self, key, use_cas=False):
-        if use_cas:
-            return self.mc.gets(str(key))
-        else:
-            return self.mc.get(str(key)), 1
-
-    def set_multi(self, value_dict):
-        new_dict = {}
-        for key, value in value_dict.iteritems():
-            new_dict[str(key)] = value
-        return self.mc.set_multi(new_dict)
-
-    def get_multi(self, keys):
-        return self.mc.get_multi([str(x) for x in keys])
+    def get(self, key):
+        cb_get = self.cb.get(str(key))
+        return cb_get[2], cb_get[1]
 
     def cas(self, key, value, cas, expiration=0):
-        if not self.mc.cas(str(key), value, cas, expiration):
-            raise Bucket.MemcacheRefusalError()
+        try:
+            self.cb.cas(str(key), expiration, 0, cas, value)
+        except MemcachedError, e:
+            if e.status == 2:
+                raise Bucket.MemcacheRefusalError()
+            else:
+                raise
 
     def getobj(self, id, key=None, jsn=None):
         from document import bucket_documentclass_index

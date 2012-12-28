@@ -149,8 +149,8 @@ class Document(object):
             obj.save()
         return obj
 
-    def reload(self, required=True, cas=False):
-        res, cas_value = self._bucket.get(self._key, use_cas=cas)
+    def reload(self, required=True):
+        res, cas_value = self._bucket.get(self._key)
         if res is None:
             raise Document.DoesNotExist(self._key)
         self.load_json(json.loads(res), cas_value)
@@ -230,7 +230,7 @@ class Document(object):
                     self._key, self.to_json(), expiration)
             self._last_json_value = json.loads(self.to_json())
         except connection.Bucket.MemcacheRefusalError:
-            self.reload(cas=True)
+            self.reload()
             self.save(expiration=expiration)
         self._modified.clear()
         return self
@@ -315,23 +315,16 @@ class _LazyViewQuery(object):
             if self.cache_time and cache:
                 cache.set(self.get_cache_key(args, limit), json.dumps(vr_rows),
                           self.cache_time)
-        ids = [x['id'] for x in vr_rows]
-        data = bucket.get_multi(ids)
         res = []
         for x in vr_rows:
-            try:
-                data_for_row = data[x['id']]
-            except KeyError:
-                continue
             res.append(
-                bucket.getobj(x['id'], x['key'], json.loads(data_for_row)))
+                bucket.getobj(x['id'], x['key'], x['doc']['json']))
         return res
-#        return [
-#                for x in vr_rows]
 
     def _merge_args(self, new_args):
         args = self.args.copy()
         args.update(new_args)
+        args['include_docs'] = True
         return args
 
     def all(self):
