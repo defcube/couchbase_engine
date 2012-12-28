@@ -134,7 +134,7 @@ class Bucket():
         from document import bucket_documentclass_index
         if not jsn:
             res, cas_value = self.get(id)
-            jsn = json.loads(res[0])
+            jsn = json.loads(res)
         else:
             cas_value = 1
         obj = bucket_documentclass_index[self.settings['key']][
